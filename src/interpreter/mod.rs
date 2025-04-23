@@ -1,5 +1,7 @@
+pub mod scanner;
 pub mod shell;
 
+use crate::interpreter::scanner::Scanner;
 use crate::interpreter::shell::Shell;
 use anyhow::Result;
 use std::io::Write;
@@ -32,14 +34,21 @@ impl Interpreter {
 
             shell_ref.set_command(buf_line.trim().to_string());
 
-            println!("@> Entered command: {}", shell_ref.get_command())
+            self.run(shell_ref.get_command())?;
         }
     }
 
     pub fn run_script(self, path: &PathBuf) -> Result<()> {
         let code = fs::read_to_string(path)?;
-        println!("Source: {}", code);
+        self.run(&code)
+    }
 
+    fn run(&self, code: &str) -> Result<()> {
+        let scanner = Scanner::new(code);
+        let tokens = scanner.scan_tokens()?;
+        for token in tokens {
+            println!("{:?}", token)
+        }
         Ok(())
     }
 }
