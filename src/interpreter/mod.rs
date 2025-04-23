@@ -1,12 +1,17 @@
 pub mod shell;
 
-use std::io;
-use std::io::Write;
-use anyhow::Result;
 use crate::interpreter::shell::Shell;
+use anyhow::Result;
+use std::io::Write;
+use std::path::PathBuf;
+use std::{fs, io};
 
-pub struct Interpreter {
+pub struct Interpreter {}
 
+impl Default for Interpreter {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Interpreter {
@@ -29,5 +34,12 @@ impl Interpreter {
 
             println!("@> Entered command: {}", shell_ref.get_command())
         }
+    }
+
+    pub fn run_script(self, path: &PathBuf) -> Result<()> {
+        let code = fs::read_to_string(path)?;
+        println!("Source: {}", code);
+
+        Ok(())
     }
 }
