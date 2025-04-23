@@ -8,7 +8,7 @@ mod cli;
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.get_path() {
-        None => Interpreter::new().run_shell(),
-        Some(path_to_script) => Interpreter::new().run_script(path_to_script),
+        None => Interpreter::default().run_shell(),
+        Some(path_to_script) => Interpreter::default().run_script(path_to_script),
     }
 }

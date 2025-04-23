@@ -6,25 +6,20 @@ use crate::interpreter::shell::Shell;
 use anyhow::Result;
 use std::io::Write;
 use std::path::PathBuf;
+use std::process::exit;
 use std::{fs, io};
 
-pub struct Interpreter {}
-
-impl Default for Interpreter {
-    fn default() -> Self {
-        Self::new()
-    }
+#[derive(Default)]
+pub struct Interpreter {
+    has_error: bool,
 }
 
 impl Interpreter {
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    pub fn run_shell(self) -> Result<()> {
+    pub fn run_shell(mut self) -> Result<()> {
         let mut shell = Shell::new();
         let shell_ref = shell.as_mut();
         loop {
+            self.has_error = false;
             print!("@> ");
             io::stdout().flush()?;
             let mut buf_line = String::new();
@@ -34,21 +29,35 @@ impl Interpreter {
 
             shell_ref.set_command(buf_line.trim().to_string());
 
-            self.run(shell_ref.get_command())?;
+            if let Err(err) = self.run(shell_ref.get_command()) {
+                print!("{}", err);
+            };
         }
     }
 
     pub fn run_script(self, path: &PathBuf) -> Result<()> {
         let code = fs::read_to_string(path)?;
-        self.run(&code)
+        if let Err(err) = self.run(&code) {
+            println!("{}", err);
+            exit(65)
+        };
+        Ok(())
     }
 
     fn run(&self, code: &str) -> Result<()> {
-        let scanner = Scanner::new(code);
+        let mut scanner = Scanner::new(code);
         let tokens = scanner.scan_tokens()?;
         for token in tokens {
             println!("{:?}", token)
         }
         Ok(())
+    }
+
+    fn error(line: usize, msg: &str) -> String {
+        Interpreter::report(line, "", msg)
+    }
+
+    fn report(line: usize, _where: &str, msg: &str) -> String {
+        format!("[line {}] Error {}: {}", line, _where, msg)
     }
 }
