@@ -18,6 +18,6 @@ impl Shell {
 
 impl AsMut<Shell> for Shell {
     fn as_mut(&mut self) -> &mut Shell {
-        &mut self
+        self
     }
 }
