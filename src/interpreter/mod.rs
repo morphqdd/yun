@@ -53,11 +53,11 @@ impl Interpreter {
         Ok(())
     }
 
-    fn error(line: usize, msg: &str) -> String {
-        Interpreter::report(line, "", msg)
+    fn error(line: usize, pos_in_line: usize, msg: &str) -> String {
+        Interpreter::report(line, pos_in_line, "", msg)
     }
 
-    fn report(line: usize, _where: &str, msg: &str) -> String {
-        format!("[line {}] Error {}: {}", line, _where, msg)
+    fn report(line: usize, pos_in_line: usize, _where: &str, msg: &str) -> String {
+        format!("[{}:{}] Error {}: {}\n", line, pos_in_line, _where, msg)
     }
 }

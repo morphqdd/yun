@@ -13,6 +13,7 @@ pub struct Scanner {
     start: usize,
     current: usize,
     line: usize,
+    pos_in_line: usize,
     keywords: HashMap<String, TokenType>,
 }
 
@@ -49,6 +50,7 @@ impl Scanner {
             start: 0,
             current: 0,
             line: 1,
+            pos_in_line: 1,
             keywords,
         }
     }
@@ -93,9 +95,11 @@ impl Scanner {
             }
             '/' => self.add_token(TokenType::Slash, None),
             ' ' | '\r' | '\t' => {}
-            '\n' => self.line += 1,
+            '\n' => {
+                self.line += 1;
+                self.pos_in_line = 1;
+            }
             '"' => self.string()?,
-            'o' if self.find_match('r') => self.add_token(TokenType::Or, None),
             _ => {
                 if self.is_digit(c) {
                     self.number()?
@@ -104,11 +108,13 @@ impl Scanner {
                 } else {
                     return Err(anyhow!(Interpreter::error(
                         self.line,
+                        self.pos_in_line,
                         "Unexpected character"
                     )));
                 }
             }
         }
+        self.pos_in_line += 1;
         Ok(())
     }
 
@@ -152,6 +158,7 @@ impl Scanner {
         if self.is_at_end() {
             return Err(anyhow!(Interpreter::error(
                 self.line,
+                self.pos_in_line,
                 "Unterminated string"
             )));
         }
@@ -187,9 +194,7 @@ impl Scanner {
         self.add_token(
             TokenType::Number,
             Some(Literal::Number(
-                self.source[self.start + 1..self.current - 1]
-                    .to_string()
-                    .parse()?,
+                self.source[self.start..self.current].to_string().parse()?,
             )),
         );
         Ok(())
