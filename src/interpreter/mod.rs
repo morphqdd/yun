@@ -3,13 +3,18 @@ pub mod parser;
 pub mod scanner;
 pub mod shell;
 
-use crate::interpreter::ast::printer::AstPrinter;
+use crate::interpreter::ast::expr::binary::Binary;
+use crate::interpreter::ast::expr::grouping::Grouping;
+use crate::interpreter::ast::expr::literal::Literal;
+use crate::interpreter::ast::expr::unary::Unary;
+use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::parser::Parser;
+use crate::interpreter::scanner::token::literal::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use crate::interpreter::scanner::Scanner;
 use crate::interpreter::shell::Shell;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use std::io::Write;
 use std::ops::Deref;
 use std::path::PathBuf;
@@ -42,7 +47,7 @@ impl Interpreter {
         }
     }
 
-    pub fn run_script(self, path: &PathBuf) -> Result<()> {
+    pub fn run_script(mut self, path: &PathBuf) -> Result<()> {
         let code = fs::read_to_string(path)?;
         if let Err(err) = self.run(&code) {
             println!("{}", err);
@@ -51,15 +56,31 @@ impl Interpreter {
         Ok(())
     }
 
-    fn run(&self, code: &str) -> Result<()> {
+    fn run(&mut self, code: &str) -> Result<()> {
         let mut scanner = Scanner::new(code);
         let tokens = scanner.scan_tokens()?;
 
         let mut parser = Parser::new(tokens);
         let ast = parser.parse()?;
-        println!("{}", AstPrinter.print(ast.deref()));
+
+        if let Err(err) = self.interpret(ast.deref()) {
+            println!("{}", err)
+        };
 
         Ok(())
+    }
+
+    fn interpret(&mut self, expr: &dyn Expr<Result<Object>>) -> Result<()> {
+        match self.evaluate(expr) {
+            Ok(value) => println!("{}", value),
+            Err(err) => return Err(err),
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn evaluate(&mut self, expr: &dyn Expr<Result<Object>>) -> Result<Object> {
+        expr.accept(self)
     }
 
     pub fn error_by_token(token: Token, msg: &str) -> String {
@@ -91,5 +112,49 @@ impl Interpreter {
             },
             msg
         )
+    }
+}
+
+impl ExprVisitor<Result<Object>> for Interpreter {
+    fn visit_binary(&mut self, binary: &Binary<Result<Object>>) -> Result<Object> {
+        let left = self.evaluate(binary.get_left())?;
+        let right = self.evaluate(binary.get_right())?;
+
+        match binary.get_op_type() {
+            TokenType::Equal => Ok(Object::Bool(left == right)),
+            TokenType::BangEqual => Ok(Object::Bool(left != right)),
+            TokenType::Greater => Ok(Object::Bool(left > right)),
+            TokenType::Less => Ok(Object::Bool(left < right)),
+            TokenType::GreaterEqual => Ok(Object::Bool(left >= right)),
+            TokenType::LessEqual => Ok(Object::Bool(left <= right)),
+            TokenType::Plus => left + right,
+            TokenType::Minus => left - right,
+            TokenType::Star => left * right,
+            TokenType::Slash => left / right,
+            _ => Err(anyhow!(Interpreter::error_by_token(
+                binary.get_token(),
+                "Unsupported binary operator"
+            ))),
+        }
+    }
+
+    fn visit_grouping(&mut self, grouping: &Grouping<Result<Object>>) -> Result<Object> {
+        self.evaluate(grouping.get_expr())
+    }
+
+    fn visit_literal(&mut self, literal: &Literal) -> Result<Object> {
+        Ok(literal.get_value().unwrap().clone())
+    }
+
+    fn visit_unary(&mut self, unary: &Unary<Result<Object>>) -> Result<Object> {
+        let obj = self.evaluate(unary.get_right())?;
+        match unary.get_op_type() {
+            TokenType::Minus => -obj,
+            TokenType::Bang => !obj,
+            _ => Err(anyhow!(Interpreter::error_by_token(
+                unary.get_token(),
+                "Unsupported unary operator"
+            ))),
+        }
     }
 }

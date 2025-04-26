@@ -1,4 +1,5 @@
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
+use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use std::ops::Deref;
 
@@ -21,6 +22,16 @@ impl<T> Unary<T> {
     #[inline]
     pub fn get_right(&self) -> &dyn Expr<T> {
         self.right.deref()
+    }
+
+    #[inline]
+    pub fn get_op_type(&self) -> TokenType {
+        self.operator.get_type()
+    }
+
+    #[inline]
+    pub fn get_token(&self) -> Token {
+        self.operator.clone()
     }
 }
 

@@ -4,12 +4,14 @@ use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::Expr;
+use crate::interpreter::parser::error::{ParserError, ParserErrorType};
 use crate::interpreter::scanner::token::literal::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
-use crate::interpreter::Interpreter;
 use anyhow::{anyhow, Result};
 use std::marker::PhantomData;
+
+pub mod error;
 
 pub struct Parser<T> {
     phantom_data: PhantomData<T>,
@@ -108,7 +110,7 @@ where
             return Ok(b!(Literal::new(Some(Object::Bool(false)))));
         }
         if self._match(vec![TokenType::True]) {
-            return Ok(b!(Literal::new(Some(Object::Bool(false)))));
+            return Ok(b!(Literal::new(Some(Object::Bool(true)))));
         }
         if self._match(vec![TokenType::Nil]) {
             return Ok(b!(Literal::new(Some(Object::Nil))));
@@ -120,11 +122,16 @@ where
 
         if self._match(vec![TokenType::LeftParen]) {
             let expr = self.expression()?;
-            self.consume(TokenType::RightParen, "Expect ')', after expression!")?;
+            self.consume(
+                TokenType::RightParen,
+                ParserErrorType::ExpectedMatchingParens,
+            )?;
             return Ok(b!(Grouping::new(expr)));
         }
 
-        Err(anyhow!(self.error(self.peek(), "Expected expression")))
+        Err(anyhow!(
+            self.error(self.peek(), ParserErrorType::ExpectedExpression)
+        ))
     }
 
     fn _match(&mut self, types: Vec<TokenType>) -> bool {
@@ -137,11 +144,11 @@ where
         false
     }
 
-    fn consume(&mut self, ty: TokenType, msg: &str) -> Result<Token> {
+    fn consume(&mut self, ty: TokenType, error_ty: ParserErrorType) -> Result<Token> {
         if self.check(ty) {
             return Ok(self.advance());
         }
-        Err(anyhow!(self.error(self.peek(), msg)))
+        Err(anyhow!(self.error(self.peek(), error_ty)))
     }
 
     fn check(&self, ty: TokenType) -> bool {
@@ -170,8 +177,8 @@ where
         self.peek().get_type().eq(&TokenType::Eof)
     }
 
-    fn error(&self, token: Token, msg: &str) -> String {
-        Interpreter::error_by_token(token, msg)
+    fn error(&self, token: Token, error_ty: ParserErrorType) -> ParserError {
+        ParserError::new(token.get_line(), token.get_pos_in_line(), error_ty)
     }
 
     fn _synchronize(&mut self) {

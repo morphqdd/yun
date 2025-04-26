@@ -1,11 +1,13 @@
 pub mod token;
 
+use crate::interpreter::scanner::error::{ScannerError, ScannerErrorType};
 use crate::interpreter::scanner::token::literal::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
-use crate::interpreter::Interpreter;
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
+
+pub mod error;
 
 pub struct Scanner {
     source: String,
@@ -113,10 +115,10 @@ impl Scanner {
                 } else if self.is_alpha(c) {
                     self.identifier()?
                 } else {
-                    return Err(anyhow!(Interpreter::error(
+                    return Err(anyhow!(ScannerError::new(
                         self.line,
                         self.pos_in_line,
-                        &format!("Unexpected character '{}'", c),
+                        ScannerErrorType::UnexpectedCharacter(c)
                     )));
                 }
             }
@@ -165,10 +167,10 @@ impl Scanner {
         }
 
         if self.is_at_end() {
-            return Err(anyhow!(Interpreter::error(
+            return Err(anyhow!(ScannerError::new(
                 self.line,
                 self.pos_in_line,
-                "Unterminated string"
+                ScannerErrorType::UnterminatedString
             )));
         }
 

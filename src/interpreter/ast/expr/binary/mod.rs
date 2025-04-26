@@ -1,4 +1,5 @@
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
+use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use std::ops::Deref;
 
@@ -30,6 +31,16 @@ impl<T> Binary<T> {
     #[inline]
     pub fn get_op_lexeme(&self) -> &str {
         self.operation.get_lexeme()
+    }
+
+    #[inline]
+    pub fn get_op_type(&self) -> TokenType {
+        self.operation.get_type()
+    }
+
+    #[inline]
+    pub fn get_token(&self) -> Token {
+        self.operation.clone()
     }
 }
 
