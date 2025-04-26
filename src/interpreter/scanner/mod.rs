@@ -97,7 +97,7 @@ impl Scanner {
             ' ' | '\r' | '\t' => {}
             '\n' => {
                 self.line += 1;
-                self.pos_in_line = 1;
+                self.pos_in_line = 0;
             }
             '"' => self.string()?,
             _ => {
@@ -109,7 +109,7 @@ impl Scanner {
                     return Err(anyhow!(Interpreter::error(
                         self.line,
                         self.pos_in_line,
-                        "Unexpected character"
+                        &format!("Unexpected character '{}'", c),
                     )));
                 }
             }
@@ -151,6 +151,7 @@ impl Scanner {
         while self.peek() != '"' && !self.is_at_end() {
             if self.peek() == '\n' {
                 self.line += 1;
+                self.pos_in_line = 0;
             }
             self.advance();
         }
@@ -178,6 +179,7 @@ impl Scanner {
         while self.is_digit(ch) {
             self.advance();
             ch = self.peek();
+            self.pos_in_line += 1;
         }
 
         let ch_n = self.peek_next();
@@ -220,6 +222,7 @@ impl Scanner {
         while self.is_alphanumeric(ch) {
             self.advance();
             ch = self.peek();
+            self.pos_in_line += 1;
         }
 
         let text = self.source[self.start..self.current].to_string();

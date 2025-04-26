@@ -58,6 +58,16 @@ impl Interpreter {
     }
 
     fn report(line: usize, pos_in_line: usize, _where: &str, msg: &str) -> String {
-        format!("[{}:{}] Error {}: {}\n", line, pos_in_line, _where, msg)
+        format!(
+            "[{}:{}] Error{}: {}\n",
+            line,
+            pos_in_line,
+            if _where.is_empty() {
+                "".to_owned()
+            } else {
+                " ".to_owned() + _where
+            },
+            msg
+        )
     }
 }
