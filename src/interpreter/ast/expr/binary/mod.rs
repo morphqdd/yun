@@ -1,25 +1,40 @@
-use crate::interpreter::ast::expr::node::Expr;
-use crate::interpreter::ast::expr::ExprVisitor;
+use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::scanner::token::Token;
+use std::ops::Deref;
 
-pub struct Binary {
-    left: Box<dyn Expr>,
+pub struct Binary<T> {
+    left: Box<dyn Expr<T>>,
     operation: Token,
-    right: Box<dyn Expr>,
+    right: Box<dyn Expr<T>>,
 }
 
-impl Binary {
-    pub fn new(left: Box<dyn Expr>, operation: Token, right: Box<dyn Expr>) -> Binary {
+impl<T> Binary<T> {
+    pub fn new(left: Box<dyn Expr<T>>, operation: Token, right: Box<dyn Expr<T>>) -> Binary<T> {
         Binary {
             left,
             operation,
             right,
         }
     }
+
+    #[inline]
+    pub fn get_left(&self) -> &dyn Expr<T> {
+        self.left.deref()
+    }
+
+    #[inline]
+    pub fn get_right(&self) -> &dyn Expr<T> {
+        self.right.deref()
+    }
+
+    #[inline]
+    pub fn get_op_lexeme(&self) -> &str {
+        self.operation.get_lexeme()
+    }
 }
 
-impl Expr for Binary {
-    fn accept(&self, visitor: &mut dyn ExprVisitor) {
-        visitor.visit_binary(self);
+impl<T> Expr<T> for Binary<T> {
+    fn accept(&self, visitor: &mut dyn ExprVisitor<T>) -> T {
+        visitor.visit_binary(self)
     }
 }

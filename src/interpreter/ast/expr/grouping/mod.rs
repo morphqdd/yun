@@ -1,18 +1,25 @@
-use crate::interpreter::ast::expr::node::Expr;
-use crate::interpreter::ast::expr::ExprVisitor;
+use crate::interpreter::ast::expr::{Expr, ExprVisitor};
+use std::ops::Deref;
 
-pub struct Grouping {
-    expression: Box<dyn Expr>,
+pub struct Grouping<T> {
+    expression: Box<dyn Expr<T>>,
 }
 
-impl Grouping {
-    pub fn new(expression: Box<dyn Expr>) -> Self {
+impl<T> Grouping<T> {
+    #[inline]
+    pub fn new(expression: Box<dyn Expr<T>>) -> Self {
         Self { expression }
+    }
+
+    #[inline]
+    pub fn get_expr(&self) -> &dyn Expr<T> {
+        self.expression.deref()
     }
 }
 
-impl Expr for Grouping {
-    fn accept(&self, visitor: &mut dyn ExprVisitor) {
+impl<T> Expr<T> for Grouping<T> {
+    #[inline]
+    fn accept(&self, visitor: &mut dyn ExprVisitor<T>) -> T {
         visitor.visit_grouping(self)
     }
 }

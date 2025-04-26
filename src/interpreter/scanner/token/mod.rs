@@ -22,6 +22,10 @@ impl Token {
             line,
         }
     }
+
+    pub fn get_lexeme(&self) -> &str {
+        &self.lexeme
+    }
 }
 
 impl Display for Token {

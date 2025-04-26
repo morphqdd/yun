@@ -1,20 +1,31 @@
-use crate::interpreter::ast::expr::node::Expr;
-use crate::interpreter::ast::expr::ExprVisitor;
+use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::scanner::token::Token;
+use std::ops::Deref;
 
-pub struct Unary {
+pub struct Unary<T> {
     operator: Token,
-    right: Box<dyn Expr>,
+    right: Box<dyn Expr<T>>,
 }
 
-impl Unary {
-    pub fn new(operator: Token, right: Box<dyn Expr>) -> Self {
+impl<T> Unary<T> {
+    #[inline]
+    pub fn new(operator: Token, right: Box<dyn Expr<T>>) -> Self {
         Self { operator, right }
+    }
+
+    #[inline]
+    pub fn get_op_lexeme(&self) -> &str {
+        self.operator.get_lexeme()
+    }
+
+    #[inline]
+    pub fn get_right(&self) -> &dyn Expr<T> {
+        self.right.deref()
     }
 }
 
-impl Expr for Unary {
-    fn accept(&self, visitor: &mut dyn ExprVisitor) {
-        visitor.visit_unary(self);
+impl<T> Expr<T> for Unary<T> {
+    fn accept(&self, visitor: &mut dyn ExprVisitor<T>) -> T {
+        visitor.visit_unary(self)
     }
 }
