@@ -1,11 +1,17 @@
 pub mod ast;
+pub mod parser;
 pub mod scanner;
 pub mod shell;
 
+use crate::interpreter::ast::printer::AstPrinter;
+use crate::interpreter::parser::Parser;
+use crate::interpreter::scanner::token::token_type::TokenType;
+use crate::interpreter::scanner::token::Token;
 use crate::interpreter::scanner::Scanner;
 use crate::interpreter::shell::Shell;
 use anyhow::Result;
 use std::io::Write;
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::process::exit;
 use std::{fs, io};
@@ -48,10 +54,25 @@ impl Interpreter {
     fn run(&self, code: &str) -> Result<()> {
         let mut scanner = Scanner::new(code);
         let tokens = scanner.scan_tokens()?;
-        for token in tokens {
-            println!("{:?}", token)
-        }
+
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse()?;
+        println!("{}", AstPrinter.print(ast.deref()));
+
         Ok(())
+    }
+
+    pub fn error_by_token(token: Token, msg: &str) -> String {
+        if token.get_type().eq(&TokenType::Eof) {
+            Interpreter::report(token.get_line(), token.get_pos_in_line(), "at end", msg)
+        } else {
+            Interpreter::report(
+                token.get_line(),
+                token.get_pos_in_line(),
+                &format!("at '{}'", token.get_lexeme()),
+                msg,
+            )
+        }
     }
 
     fn error(line: usize, pos_in_line: usize, msg: &str) -> String {

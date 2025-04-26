@@ -61,10 +61,10 @@ mod tests {
     fn test_print() {
         let expr = Binary::new(
             b!(Unary::new(
-                Token::new(Minus, "-", None, 1),
+                Token::new(Minus, "-", None, 1, 1),
                 b!(Literal::new(Some(Number(123.))))
             )),
-            Token::new(Star, "*", None, 1),
+            Token::new(Star, "*", None, 1, 1),
             b!(Grouping::new(b!(Literal::new(Some(Number(45.67)))))),
         );
         assert_eq!("(* (- 123) (group 45.67))", AstPrinter.print(&expr))

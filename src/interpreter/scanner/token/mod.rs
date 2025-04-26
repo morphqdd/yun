@@ -5,26 +5,50 @@ use std::fmt::{Display, Formatter};
 pub mod literal;
 pub mod token_type;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Token {
     token_type: TokenType,
     lexeme: String,
     literal: Option<Object>,
     line: usize,
+    pos_in_line: usize,
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, lexeme: &str, literal: Option<Object>, line: usize) -> Token {
+    pub fn new(
+        token_type: TokenType,
+        lexeme: &str,
+        literal: Option<Object>,
+        line: usize,
+        pos_in_line: usize,
+    ) -> Token {
         Self {
             token_type,
             lexeme: lexeme.into(),
             literal,
             line,
+            pos_in_line,
         }
     }
 
     pub fn get_lexeme(&self) -> &str {
         &self.lexeme
+    }
+
+    pub fn get_type(&self) -> TokenType {
+        self.token_type.clone()
+    }
+
+    pub fn get_lit(&self) -> Option<Object> {
+        self.literal.clone()
+    }
+
+    pub fn get_line(&self) -> usize {
+        self.line
+    }
+
+    pub fn get_pos_in_line(&self) -> usize {
+        self.pos_in_line
     }
 }
 

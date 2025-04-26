@@ -1,5 +1,6 @@
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::scanner::token::literal::Object;
+use std::fmt::Display;
 
 pub struct Literal {
     value: Option<Object>,
@@ -24,11 +25,12 @@ impl<T> Expr<T> for Literal {
     }
 }
 
-impl ToString for Literal {
-    fn to_string(&self) -> String {
-        match &self.value {
+impl Display for Literal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match &self.value {
             None => "nil".to_string(),
             Some(lit) => lit.to_string(),
-        }
+        };
+        write!(f, "{}", str)
     }
 }

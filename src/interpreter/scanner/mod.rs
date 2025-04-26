@@ -60,6 +60,13 @@ impl Scanner {
             self.start = self.current;
             self.scan_token()?;
         }
+        self.tokens.push(Token::new(
+            TokenType::Eof,
+            "",
+            None,
+            self.line,
+            self.pos_in_line,
+        ));
         Ok(self.tokens.clone())
     }
 
@@ -126,7 +133,8 @@ impl Scanner {
 
     fn add_token(&mut self, ty: TokenType, lit: Option<Object>) {
         let text = self.source[self.start..self.current].to_string();
-        self.tokens.push(Token::new(ty, &text, lit, self.line));
+        self.tokens
+            .push(Token::new(ty, &text, lit, self.line, self.pos_in_line));
     }
 
     fn find_match(&mut self, expected: char) -> bool {
