@@ -1,6 +1,6 @@
 pub mod token;
 
-use crate::interpreter::scanner::token::literal::Literal;
+use crate::interpreter::scanner::token::literal::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use crate::interpreter::Interpreter;
@@ -124,7 +124,7 @@ impl Scanner {
         ch
     }
 
-    fn add_token(&mut self, ty: TokenType, lit: Option<Literal>) {
+    fn add_token(&mut self, ty: TokenType, lit: Option<Object>) {
         let text = self.source[self.start..self.current].to_string();
         self.tokens.push(Token::new(ty, &text, lit, self.line));
     }
@@ -166,7 +166,7 @@ impl Scanner {
 
         self.advance();
         let value = self.source[self.start + 1..self.current - 1].to_string();
-        self.add_token(TokenType::String, Some(Literal::String(value)));
+        self.add_token(TokenType::String, Some(Object::String(value)));
         Ok(())
     }
 
@@ -195,7 +195,7 @@ impl Scanner {
         }
         self.add_token(
             TokenType::Number,
-            Some(Literal::Number(
+            Some(Object::Number(
                 self.source[self.start..self.current].to_string().parse()?,
             )),
         );

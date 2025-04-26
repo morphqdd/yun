@@ -1,5 +1,5 @@
 #[derive(Debug, Clone)]
-pub enum Literal {
+pub enum Object {
     String(String),
     Number(f64),
 }

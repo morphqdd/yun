@@ -1,4 +1,4 @@
-use crate::interpreter::scanner::token::literal::Literal;
+use crate::interpreter::scanner::token::literal::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use std::fmt::{Display, Formatter};
 
@@ -9,17 +9,12 @@ pub mod token_type;
 pub struct Token {
     token_type: TokenType,
     lexeme: String,
-    literal: Option<Literal>,
+    literal: Option<Object>,
     line: usize,
 }
 
 impl Token {
-    pub fn new(
-        token_type: TokenType,
-        lexeme: &str,
-        literal: Option<Literal>,
-        line: usize,
-    ) -> Token {
+    pub fn new(token_type: TokenType, lexeme: &str, literal: Option<Object>, line: usize) -> Token {
         Self {
             token_type,
             lexeme: lexeme.into(),
