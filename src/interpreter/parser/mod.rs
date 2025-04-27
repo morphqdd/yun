@@ -16,7 +16,6 @@ use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use anyhow::{anyhow, Result};
-use downcast_rs::Downcast;
 use std::marker::PhantomData;
 
 pub mod error;
