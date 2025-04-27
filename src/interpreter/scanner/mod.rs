@@ -67,7 +67,7 @@ impl Scanner {
             "",
             None,
             self.line,
-            self.pos_in_line,
+            self.pos_in_line + 1,
         ));
         Ok(self.tokens.clone())
     }
@@ -123,20 +123,25 @@ impl Scanner {
                 }
             }
         }
-        self.pos_in_line += 1;
         Ok(())
     }
 
     fn advance(&mut self) -> char {
         let ch = self.source.chars().nth(self.current).unwrap();
         self.current += 1;
+        self.pos_in_line += 1;
         ch
     }
 
     fn add_token(&mut self, ty: TokenType, lit: Option<Object>) {
         let text = self.source[self.start..self.current].to_string();
-        self.tokens
-            .push(Token::new(ty, &text, lit, self.line, self.pos_in_line));
+        self.tokens.push(Token::new(
+            ty,
+            &text,
+            lit,
+            self.line,
+            self.pos_in_line - text.len(),
+        ));
     }
 
     fn find_match(&mut self, expected: char) -> bool {
@@ -189,7 +194,6 @@ impl Scanner {
         while self.is_digit(ch) {
             self.advance();
             ch = self.peek();
-            self.pos_in_line += 1;
         }
 
         let ch_n = self.peek_next();
@@ -232,7 +236,6 @@ impl Scanner {
         while self.is_alphanumeric(ch) {
             self.advance();
             ch = self.peek();
-            self.pos_in_line += 1;
         }
 
         let text = self.source[self.start..self.current].to_string();

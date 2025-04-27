@@ -9,6 +9,7 @@ use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
+use crate::interpreter::ast::stmt::let_stmt::Let;
 use crate::interpreter::ast::stmt::print::Print;
 use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
 use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
@@ -141,8 +142,7 @@ impl ExprVisitor<Result<Object>> for Interpreter {
             TokenType::Star => left * right,
             TokenType::Slash => left / right,
             _ => Err(anyhow!(RuntimeError::new(
-                binary.get_token().get_line(),
-                binary.get_token().get_pos_in_line(),
+                binary.get_token(),
                 RuntimeErrorType::UnsupportedBinaryOperator(binary.get_op_lexeme().into())
             ))),
         }
@@ -162,8 +162,7 @@ impl ExprVisitor<Result<Object>> for Interpreter {
             TokenType::Minus => -obj,
             TokenType::Bang => !obj,
             _ => Err(anyhow!(RuntimeError::new(
-                unary.get_token().get_line(),
-                unary.get_token().get_pos_in_line(),
+                unary.get_token(),
                 RuntimeErrorType::UnsupportedBinaryOperator(unary.get_op_lexeme().into())
             ))),
         }
@@ -180,5 +179,9 @@ impl StmtVisitor<Result<Object>> for Interpreter {
         let value = self.evaluate(stmt.expr())?;
         println!("{}", value);
         Ok(Object::Void)
+    }
+
+    fn visit_let(&mut self, stmt: &Let<Result<Object>>) -> Result<Object> {
+        todo!()
     }
 }

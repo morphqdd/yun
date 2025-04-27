@@ -1,21 +1,17 @@
+use crate::interpreter::scanner::token::Token;
 use crate::interpreter::Interpreter;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug)]
 pub struct ParserError {
-    line: usize,
-    pos_in_line: usize,
+    token: Token,
     ty: ParserErrorType,
 }
 
 impl ParserError {
-    pub fn new(line: usize, pos_in_line: usize, ty: ParserErrorType) -> Self {
-        Self {
-            line,
-            pos_in_line,
-            ty,
-        }
+    pub fn new(token: Token, ty: ParserErrorType) -> Self {
+        Self { token, ty }
     }
 }
 
@@ -24,7 +20,7 @@ impl Display for ParserError {
         write!(
             f,
             "{}",
-            Interpreter::error(self.line, self.pos_in_line, &self.ty.to_string())
+            Interpreter::error_by_token(self.token.clone(), &self.ty.to_string())
         )
     }
 }

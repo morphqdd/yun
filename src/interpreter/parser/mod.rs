@@ -37,11 +37,40 @@ where
     pub fn parse(&mut self) -> Result<Vec<Box<dyn Stmt<T>>>> {
         let mut statements = vec![];
 
+        let mut error_stack = vec![];
+
         while !self.is_at_end() {
-            statements.push(self.statement()?)
+            match self.statement() {
+                Ok(stmt) => statements.push(stmt),
+                Err(err) => {
+                    error_stack.push(err);
+                    self.synchronize()
+                }
+            }
         }
 
-        Ok(statements)
+        if error_stack.is_empty() {
+            return Ok(statements);
+        }
+
+        Err(anyhow!(
+            "{}",
+            error_stack
+                .into_iter()
+                .map(|err| err.to_string())
+                .collect::<String>()
+        ))
+    }
+
+    fn declaration(&mut self) -> Result<Box<dyn Stmt<T>>> {
+        if self._match(vec![TokenType::Let]) {
+            return self.let_declaration();
+        }
+        self.statement()
+    }
+
+    fn let_declaration(&self) -> Result<Box<dyn Stmt<T>>> {
+        todo!()
     }
 
     fn statement(&mut self) -> Result<Box<dyn Stmt<T>>> {
@@ -204,10 +233,10 @@ where
     }
 
     fn error(&self, token: Token, error_ty: ParserErrorType) -> ParserError {
-        ParserError::new(token.get_line(), token.get_pos_in_line(), error_ty)
+        ParserError::new(token, error_ty)
     }
 
-    fn _synchronize(&mut self) {
+    fn synchronize(&mut self) {
         self.advance();
         while !self.is_at_end() {
             if self.previous().get_type().eq(&TokenType::Semicolon) {
