@@ -37,6 +37,8 @@ pub enum RuntimeErrorType {
     UnsupportedUnaryOperator(String),
     UnsupportedBinaryOperator(String),
     BugEnvironmentNotInit,
+    UndefinedVariable(String),
+    VariableIsNotInit(String),
 }
 
 impl Display for RuntimeErrorType {
@@ -62,6 +64,10 @@ impl Display for RuntimeErrorType {
                 write!(f, "Unsupported binary operator '{}'", op)
             }
             RuntimeErrorType::BugEnvironmentNotInit => write!(f, "Bug environment not initialized"),
+            RuntimeErrorType::UndefinedVariable(v) => write!(f, "Undefined variable '{}'", v),
+            RuntimeErrorType::VariableIsNotInit(v) => {
+                write!(f, "Variable '{}' is not initialized", v)
+            }
         }
     }
 }

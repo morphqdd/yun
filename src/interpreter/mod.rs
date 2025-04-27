@@ -262,7 +262,7 @@ impl StmtVisitor<Result<Object>> for Interpreter {
                     }
                     Some(env) => {
                         env.borrow_mut()
-                            .define(stmt.get_ident().get_lexeme(), value);
+                            .define(stmt.get_ident().get_lexeme(), Some(value));
                     }
                 }
             }
@@ -274,8 +274,7 @@ impl StmtVisitor<Result<Object>> for Interpreter {
                     )));
                 }
                 Some(env) => {
-                    env.borrow_mut()
-                        .define(stmt.get_ident().get_lexeme(), Object::Nil);
+                    env.borrow_mut().define(stmt.get_ident().get_lexeme(), None);
                 }
             },
         }
