@@ -6,6 +6,7 @@ use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
 use crate::interpreter::ast::expr::Expr;
+use crate::interpreter::ast::stmt::block::Block;
 use crate::interpreter::ast::stmt::let_stmt::Let;
 use crate::interpreter::ast::stmt::print::Print;
 use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
@@ -93,8 +94,25 @@ where
         if self._match(vec![TokenType::Print]) {
             return self.print_statement();
         }
+        if self._match(vec![TokenType::LeftBrace]) {
+            return Ok(b!(Block::new(self.block_statement()?)));
+        }
 
         self.expr_statement()
+    }
+
+    fn block_statement(&mut self) -> Result<Vec<Box<dyn Stmt<T>>>> {
+        let mut statements = vec![];
+        while !self.check(TokenType::RightBrace) && !self.is_at_end() {
+            statements.push(self.declaration()?);
+        }
+
+        self.consume(
+            TokenType::RightBrace,
+            ParserErrorType::ExpectedMatchingBrace,
+        )?;
+
+        Ok(statements)
     }
 
     fn print_statement(&mut self) -> Result<Box<dyn Stmt<T>>> {

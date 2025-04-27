@@ -36,6 +36,7 @@ pub enum RuntimeErrorType {
     CannotNegateType(String),
     UnsupportedUnaryOperator(String),
     UnsupportedBinaryOperator(String),
+    BugEnvironmentNotInit,
 }
 
 impl Display for RuntimeErrorType {
@@ -60,6 +61,7 @@ impl Display for RuntimeErrorType {
             RuntimeErrorType::UnsupportedBinaryOperator(op) => {
                 write!(f, "Unsupported binary operator '{}'", op)
             }
+            RuntimeErrorType::BugEnvironmentNotInit => write!(f, "Bug environment not initialized"),
         }
     }
 }

@@ -12,6 +12,7 @@ use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
+use crate::interpreter::ast::stmt::block::Block;
 use crate::interpreter::ast::stmt::let_stmt::Let;
 use crate::interpreter::ast::stmt::print::Print;
 use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
@@ -25,15 +26,24 @@ use crate::interpreter::scanner::token::Token;
 use crate::interpreter::scanner::Scanner;
 use crate::interpreter::shell::Shell;
 use anyhow::{anyhow, Result};
+use std::cell::RefCell;
 use std::io::Write;
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::process::exit;
+use std::rc::Rc;
 use std::{fs, io};
 
-#[derive(Default)]
 pub struct Interpreter {
-    env: Environment,
+    env: Option<Rc<RefCell<Environment>>>,
+}
+
+impl Default for Interpreter {
+    fn default() -> Self {
+        Self {
+            env: Some(Default::default()),
+        }
+    }
 }
 
 impl Interpreter {
@@ -50,9 +60,13 @@ impl Interpreter {
 
             shell_ref.set_command(buf_line.trim().to_string());
 
-            if let Err(err) = self.run(shell_ref.get_command()) {
-                print!("{}", err);
-            };
+            match self.run(shell_ref.get_command()) {
+                Ok(res) => match res {
+                    Object::Void => {}
+                    _ => println!("{}", res),
+                },
+                Err(err) => print!("{}", err),
+            }
         }
     }
 
@@ -65,27 +79,44 @@ impl Interpreter {
         Ok(())
     }
 
-    fn run(&mut self, code: &str) -> Result<()> {
+    fn run(&mut self, code: &str) -> Result<Object> {
         let mut scanner = Scanner::new(code);
         let tokens = scanner.scan_tokens()?;
 
         let mut parser = Parser::new(tokens);
         let ast = parser.parse()?;
 
-        self.interpret(ast)?;
+        let res = self.interpret(ast)?;
 
-        Ok(())
+        Ok(res)
     }
 
-    fn interpret(&mut self, statements: Vec<Box<dyn Stmt<Result<Object>>>>) -> Result<()> {
+    fn interpret(&mut self, statements: Vec<Box<dyn Stmt<Result<Object>>>>) -> Result<Object> {
+        let mut res = Object::Void;
         for stmt in statements {
-            self.execute(stmt)?;
+            res = self.execute(stmt.deref())?;
         }
-        Ok(())
+        Ok(res)
+    }
+
+    fn execute_block(
+        &mut self,
+        statements: &[Box<dyn Stmt<Result<Object>>>],
+        environment: Rc<RefCell<Environment>>,
+    ) -> Result<Object> {
+        let previous = self.env.replace(environment);
+        for stmt in statements {
+            if let Err(err) = self.execute(stmt.deref()) {
+                self.env.replace(previous.unwrap());
+                return Err(err);
+            }
+        }
+        self.env.replace(previous.unwrap());
+        Ok(Object::Void)
     }
 
     #[inline]
-    fn execute(&mut self, statement: Box<dyn Stmt<Result<Object>>>) -> Result<Object> {
+    fn execute(&mut self, statement: &dyn Stmt<Result<Object>>) -> Result<Object> {
         statement.accept(self)
     }
 
@@ -185,19 +216,30 @@ impl ExprVisitor<Result<Object>> for Interpreter {
     }
 
     fn visit_variable(&mut self, variable: &Variable) -> Result<Object> {
-        self.env.get(&variable.get_token())
+        if let Some(env) = &self.env {
+            return env.borrow().get(&variable.get_token());
+        }
+        Err(anyhow!(RuntimeError::new(
+            variable.get_token(),
+            RuntimeErrorType::BugEnvironmentNotInit
+        )))
     }
 
     fn visit_assign(&mut self, assign: &Assign<Result<Object>>) -> Result<Object> {
         let value = self.evaluate(assign.get_value())?;
-        self.env.assign(&assign.get_token(), value.clone())
+        if let Some(env) = &self.env {
+            return env.borrow_mut().assign(&assign.get_token(), value.clone());
+        }
+        Err(anyhow!(RuntimeError::new(
+            assign.get_token(),
+            RuntimeErrorType::BugEnvironmentNotInit
+        )))
     }
 }
 
 impl StmtVisitor<Result<Object>> for Interpreter {
     fn visit_expr(&mut self, stmt: &StmtExpr<Result<Object>>) -> Result<Object> {
-        self.evaluate(stmt.expr())?;
-        Ok(Object::Void)
+        self.evaluate(stmt.expr())
     }
 
     fn visit_print(&mut self, stmt: &Print<Result<Object>>) -> Result<Object> {
@@ -210,12 +252,41 @@ impl StmtVisitor<Result<Object>> for Interpreter {
         match stmt.get_initializer() {
             Some(initializer) => {
                 let value = self.evaluate(initializer)?;
-                self.env.define(stmt.get_ident().get_lexeme(), value);
+
+                match &self.env {
+                    None => {
+                        return Err(anyhow!(RuntimeError::new(
+                            stmt.get_ident(),
+                            RuntimeErrorType::BugEnvironmentNotInit
+                        )));
+                    }
+                    Some(env) => {
+                        env.borrow_mut()
+                            .define(stmt.get_ident().get_lexeme(), value);
+                    }
+                }
             }
-            None => {
-                self.env.define(stmt.get_ident().get_lexeme(), Object::Nil);
-            }
+            None => match &self.env {
+                None => {
+                    return Err(anyhow!(RuntimeError::new(
+                        stmt.get_ident(),
+                        RuntimeErrorType::BugEnvironmentNotInit
+                    )));
+                }
+                Some(env) => {
+                    env.borrow_mut()
+                        .define(stmt.get_ident().get_lexeme(), Object::Nil);
+                }
+            },
         }
+        Ok(Object::Void)
+    }
+
+    fn visit_block(&mut self, stmt: &Block<Result<Object>>) -> Result<Object> {
+        self.execute_block(
+            stmt.get_stmts(),
+            Rc::new(RefCell::new(Environment::new(self.env.clone()))),
+        )?;
         Ok(Object::Void)
     }
 }

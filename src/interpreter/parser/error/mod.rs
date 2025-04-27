@@ -36,6 +36,7 @@ pub enum ParserErrorType {
     ExpectedSemicolonAfterVarDecl,
     UndefinedVariable(String),
     InvalidAssignmentTarget,
+    ExpectedMatchingBrace,
 }
 
 impl Display for ParserErrorType {
@@ -50,6 +51,7 @@ impl Display for ParserErrorType {
             }
             ParserErrorType::UndefinedVariable(v) => write!(f, "Undefined variable: `{}`!", v),
             ParserErrorType::InvalidAssignmentTarget => write!(f, "Invalid assignment target!"),
+            ParserErrorType::ExpectedMatchingBrace => write!(f, "Expected '}}' after block!"),
         }
     }
 }
