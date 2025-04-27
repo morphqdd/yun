@@ -4,8 +4,11 @@ use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::Expr;
+use crate::interpreter::ast::stmt::print::Print;
+use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
+use crate::interpreter::ast::stmt::Stmt;
 use crate::interpreter::parser::error::{ParserError, ParserErrorType};
-use crate::interpreter::scanner::token::literal::Object;
+use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use anyhow::{anyhow, Result};
@@ -31,11 +34,34 @@ where
         }
     }
 
-    pub fn parse(&mut self) -> Result<Box<dyn Expr<T>>> {
-        match self.expression() {
-            Ok(expr) => Ok(expr),
-            Err(err) => Err(err),
+    pub fn parse(&mut self) -> Result<Vec<Box<dyn Stmt<T>>>> {
+        let mut statements = vec![];
+
+        while !self.is_at_end() {
+            statements.push(self.statement()?)
         }
+
+        Ok(statements)
+    }
+
+    fn statement(&mut self) -> Result<Box<dyn Stmt<T>>> {
+        if self._match(vec![TokenType::Print]) {
+            return self.print_statement();
+        }
+
+        self.expr_statement()
+    }
+
+    fn print_statement(&mut self) -> Result<Box<dyn Stmt<T>>> {
+        let value = self.expression()?;
+        self.consume(TokenType::Semicolon, ParserErrorType::ExpectedSemicolon)?;
+        Ok(b!(Print::new(value)))
+    }
+
+    fn expr_statement(&mut self) -> Result<Box<dyn Stmt<T>>> {
+        let expr = self.expression()?;
+        self.consume(TokenType::Semicolon, ParserErrorType::ExpectedSemicolon)?;
+        Ok(b!(StmtExpr::new(expr)))
     }
 
     pub fn expression(&mut self) -> Result<Box<dyn Expr<T>>> {

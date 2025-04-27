@@ -1,4 +1,5 @@
 pub mod ast;
+pub mod error;
 pub mod parser;
 pub mod scanner;
 pub mod shell;
@@ -8,8 +9,12 @@ use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
+use crate::interpreter::ast::stmt::print::Print;
+use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
+use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
+use crate::interpreter::error::{RuntimeError, RuntimeErrorType};
 use crate::interpreter::parser::Parser;
-use crate::interpreter::scanner::token::literal::Object;
+use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use crate::interpreter::scanner::Scanner;
@@ -63,19 +68,23 @@ impl Interpreter {
         let mut parser = Parser::new(tokens);
         let ast = parser.parse()?;
 
-        if let Err(err) = self.interpret(ast.deref()) {
+        if let Err(err) = self.interpret(ast) {
             println!("{}", err)
         };
 
         Ok(())
     }
 
-    fn interpret(&mut self, expr: &dyn Expr<Result<Object>>) -> Result<()> {
-        match self.evaluate(expr) {
-            Ok(value) => println!("{}", value),
-            Err(err) => return Err(err),
+    fn interpret(&mut self, statements: Vec<Box<dyn Stmt<Result<Object>>>>) -> Result<()> {
+        for stmt in statements {
+            self.execute(stmt)?;
         }
         Ok(())
+    }
+
+    #[inline]
+    fn execute(&mut self, statement: Box<dyn Stmt<Result<Object>>>) -> Result<Object> {
+        statement.accept(self)
     }
 
     #[inline]
@@ -131,9 +140,10 @@ impl ExprVisitor<Result<Object>> for Interpreter {
             TokenType::Minus => left - right,
             TokenType::Star => left * right,
             TokenType::Slash => left / right,
-            _ => Err(anyhow!(Interpreter::error_by_token(
-                binary.get_token(),
-                "Unsupported binary operator"
+            _ => Err(anyhow!(RuntimeError::new(
+                binary.get_token().get_line(),
+                binary.get_token().get_pos_in_line(),
+                RuntimeErrorType::UnsupportedBinaryOperator(binary.get_op_lexeme().into())
             ))),
         }
     }
@@ -151,10 +161,24 @@ impl ExprVisitor<Result<Object>> for Interpreter {
         match unary.get_op_type() {
             TokenType::Minus => -obj,
             TokenType::Bang => !obj,
-            _ => Err(anyhow!(Interpreter::error_by_token(
-                unary.get_token(),
-                "Unsupported unary operator"
+            _ => Err(anyhow!(RuntimeError::new(
+                unary.get_token().get_line(),
+                unary.get_token().get_pos_in_line(),
+                RuntimeErrorType::UnsupportedBinaryOperator(unary.get_op_lexeme().into())
             ))),
         }
+    }
+}
+
+impl StmtVisitor<Result<Object>> for Interpreter {
+    fn visit_expr(&mut self, stmt: &StmtExpr<Result<Object>>) -> Result<Object> {
+        self.evaluate(stmt.expr())?;
+        Ok(Object::Void)
+    }
+
+    fn visit_print(&mut self, stmt: &Print<Result<Object>>) -> Result<Object> {
+        let value = self.evaluate(stmt.expr())?;
+        println!("{}", value);
+        Ok(Object::Void)
     }
 }

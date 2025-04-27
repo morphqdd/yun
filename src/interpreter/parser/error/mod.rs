@@ -1,3 +1,4 @@
+use crate::interpreter::Interpreter;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 
@@ -20,7 +21,11 @@ impl ParserError {
 
 impl Display for ParserError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        write!(
+            f,
+            "{}",
+            Interpreter::error(self.line, self.pos_in_line, &self.ty.to_string())
+        )
     }
 }
 
@@ -30,6 +35,7 @@ impl Error for ParserError {}
 pub enum ParserErrorType {
     ExpectedMatchingParens,
     ExpectedExpression,
+    ExpectedSemicolon,
 }
 
 impl Display for ParserErrorType {
@@ -37,6 +43,7 @@ impl Display for ParserErrorType {
         match self {
             ParserErrorType::ExpectedMatchingParens => write!(f, "Expect ')', after expression!"),
             ParserErrorType::ExpectedExpression => write!(f, "Expected expression!"),
+            ParserErrorType::ExpectedSemicolon => write!(f, "Expected ';' after expression"),
         }
     }
 }

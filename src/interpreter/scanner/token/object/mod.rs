@@ -1,3 +1,4 @@
+use crate::interpreter::error::RuntimeErrorType;
 use anyhow::{anyhow, Result};
 use std::cmp::Ordering;
 use std::fmt::Display;
@@ -9,6 +10,19 @@ pub enum Object {
     Number(f64),
     Bool(bool),
     Nil,
+    Void,
+}
+
+impl Object {
+    pub fn get_type(&self) -> String {
+        match self {
+            Object::String(_) => "string".into(),
+            Object::Number(_) => "number".into(),
+            Object::Bool(_) => "boolean".into(),
+            Object::Nil => "nil".into(),
+            Object::Void => "void".into(),
+        }
+    }
 }
 
 impl Neg for Object {
@@ -17,7 +31,7 @@ impl Neg for Object {
     fn neg(self) -> Self::Output {
         match self {
             Object::Number(n) => Ok(Object::Number(-n)),
-            _ => Err(anyhow!("Cannot negate this type")),
+            _ => Err(anyhow!(RuntimeErrorType::CannotNegateType(self.get_type()))),
         }
     }
 }
@@ -31,6 +45,7 @@ impl Not for Object {
             Object::String(_) => Ok(Object::Bool(true)),
             Object::Number(_) => Ok(Object::Bool(true)),
             Object::Nil => Ok(Object::Bool(false)),
+            Object::Void => Ok(Object::Bool(false)),
         }
     }
 }
@@ -39,10 +54,13 @@ impl Add for Object {
     type Output = Result<Object>;
 
     fn add(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
+        match (&self, &rhs) {
             (Object::Number(a), Object::Number(b)) => Ok(Object::Number(a + b)),
-            (Object::String(a), Object::String(b)) => Ok(Object::String(a + &b)),
-            _ => Err(anyhow!("Cannot add this types")),
+            (Object::String(a), Object::String(b)) => Ok(Object::String(a.to_owned() + b)),
+            _ => Err(anyhow!(RuntimeErrorType::CannotAddTypes(
+                self.get_type(),
+                rhs.get_type()
+            ))),
         }
     }
 }
@@ -51,9 +69,12 @@ impl Sub for Object {
     type Output = Result<Object>;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
+        match (&self, &rhs) {
             (Object::Number(a), Object::Number(b)) => Ok(Object::Number(a - b)),
-            _ => Err(anyhow!("Cannot sub this types")),
+            _ => Err(anyhow!(RuntimeErrorType::CannotSubtractTypes(
+                self.get_type(),
+                rhs.get_type()
+            ))),
         }
     }
 }
@@ -62,9 +83,12 @@ impl Mul for Object {
     type Output = Result<Object>;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
+        match (&self, &rhs) {
             (Object::Number(a), Object::Number(b)) => Ok(Object::Number(a * b)),
-            _ => Err(anyhow!("Cannot add this types")),
+            _ => Err(anyhow!(RuntimeErrorType::CannotMultiplyTypes(
+                self.get_type(),
+                rhs.get_type()
+            ))),
         }
     }
 }
@@ -73,9 +97,12 @@ impl Div for Object {
     type Output = Result<Object>;
 
     fn div(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
+        match (&self, &rhs) {
             (Object::Number(a), Object::Number(b)) => Ok(Object::Number(a / b)),
-            _ => Err(anyhow!("Cannot add this types")),
+            _ => Err(anyhow!(RuntimeErrorType::CannotDivideTypes(
+                self.get_type(),
+                rhs.get_type()
+            ))),
         }
     }
 }
@@ -94,12 +121,12 @@ impl PartialOrd<Self> for Object {
 
 impl Display for Object {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let str = match self {
-            Object::String(str) => format!("\"{}\"", str),
-            Object::Number(num) => num.to_string(),
-            Object::Bool(b) => b.to_string(),
-            Object::Nil => "nil".to_string(),
-        };
-        write!(f, "{}", str)
+        match self {
+            Object::String(str) => write!(f, "{}", str),
+            Object::Number(num) => write!(f, "{}", num),
+            Object::Bool(b) => write!(f, "{}", b),
+            Object::Nil => write!(f, "nil"),
+            Object::Void => write!(f, ""),
+        }
     }
 }

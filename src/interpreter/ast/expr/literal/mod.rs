@@ -1,5 +1,5 @@
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
-use crate::interpreter::scanner::token::literal::Object;
+use crate::interpreter::scanner::token::object::Object;
 use std::fmt::Display;
 
 pub struct Literal {

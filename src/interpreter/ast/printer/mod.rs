@@ -53,7 +53,7 @@ mod tests {
     use crate::interpreter::ast::expr::literal::Literal;
     use crate::interpreter::ast::expr::unary::Unary;
     use crate::interpreter::ast::printer::AstPrinter;
-    use crate::interpreter::scanner::token::literal::Object::Number;
+    use crate::interpreter::scanner::token::object::Object::Number;
     use crate::interpreter::scanner::token::token_type::TokenType::{Minus, Star};
     use crate::interpreter::scanner::token::Token;
 
