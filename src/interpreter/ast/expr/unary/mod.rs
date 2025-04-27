@@ -35,7 +35,7 @@ impl<T> Unary<T> {
     }
 }
 
-impl<T> Expr<T> for Unary<T> {
+impl<T: 'static> Expr<T> for Unary<T> {
     fn accept(&self, visitor: &mut dyn ExprVisitor<T>) -> T {
         visitor.visit_unary(self)
     }

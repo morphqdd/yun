@@ -1,9 +1,12 @@
 use crate::b;
+use crate::interpreter::ast::expr::assignment::Assign;
 use crate::interpreter::ast::expr::binary::Binary;
 use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::unary::Unary;
+use crate::interpreter::ast::expr::variable::Variable;
 use crate::interpreter::ast::expr::Expr;
+use crate::interpreter::ast::stmt::let_stmt::Let;
 use crate::interpreter::ast::stmt::print::Print;
 use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
 use crate::interpreter::ast::stmt::Stmt;
@@ -12,6 +15,7 @@ use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use anyhow::{anyhow, Result};
+use downcast_rs::Downcast;
 use std::marker::PhantomData;
 
 pub mod error;
@@ -40,7 +44,7 @@ where
         let mut error_stack = vec![];
 
         while !self.is_at_end() {
-            match self.statement() {
+            match self.declaration() {
                 Ok(stmt) => statements.push(stmt),
                 Err(err) => {
                     error_stack.push(err);
@@ -69,8 +73,20 @@ where
         self.statement()
     }
 
-    fn let_declaration(&self) -> Result<Box<dyn Stmt<T>>> {
-        todo!()
+    fn let_declaration(&mut self) -> Result<Box<dyn Stmt<T>>> {
+        let name = self.consume(TokenType::Identifier, ParserErrorType::ExpectedVariableName)?;
+
+        let mut initializer = None;
+        if self._match(vec![TokenType::Equal]) {
+            initializer = Some(self.expression()?);
+        }
+
+        self.consume(
+            TokenType::Semicolon,
+            ParserErrorType::ExpectedSemicolonAfterVarDecl,
+        )?;
+
+        Ok(b!(Let::new(name, initializer)))
     }
 
     fn statement(&mut self) -> Result<Box<dyn Stmt<T>>> {
@@ -94,13 +110,33 @@ where
     }
 
     pub fn expression(&mut self) -> Result<Box<dyn Expr<T>>> {
-        self.equality()
+        self.assignment()
+    }
+
+    fn assignment(&mut self) -> Result<Box<dyn Expr<T>>> {
+        let expr = self.equality()?;
+        if self._match(vec![TokenType::Equal]) {
+            let token = self.previous();
+            let value = self.assignment()?;
+
+            if let Some(expr) = expr.downcast_ref::<Variable>() {
+                let name = expr.get_token();
+                return Ok(b!(Assign::new(name, value)));
+            }
+
+            return Err(anyhow!(ParserError::new(
+                token,
+                ParserErrorType::InvalidAssignmentTarget
+            )));
+        }
+
+        Ok(expr)
     }
 
     fn equality(&mut self) -> Result<Box<dyn Expr<T>>> {
         let mut expr = self.comparison()?;
 
-        while self._match(vec![TokenType::BangEqual, TokenType::Equal]) {
+        while self._match(vec![TokenType::BangEqual, TokenType::EqualEqual]) {
             let token = self.previous();
             let right = self.comparison()?;
             expr = b!(Binary::new(expr, token, right));
@@ -173,6 +209,10 @@ where
 
         if self._match(vec![TokenType::Number, TokenType::String]) {
             return Ok(b!(Literal::new(self.previous().get_lit())));
+        }
+
+        if self._match(vec![TokenType::Identifier]) {
+            return Ok(b!(Variable::new(self.previous())));
         }
 
         if self._match(vec![TokenType::LeftParen]) {

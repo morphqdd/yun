@@ -1,18 +1,22 @@
 pub mod ast;
+pub mod environment;
 pub mod error;
 pub mod parser;
 pub mod scanner;
 pub mod shell;
 
+use crate::interpreter::ast::expr::assignment::Assign;
 use crate::interpreter::ast::expr::binary::Binary;
 use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::unary::Unary;
+use crate::interpreter::ast::expr::variable::Variable;
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::ast::stmt::let_stmt::Let;
 use crate::interpreter::ast::stmt::print::Print;
 use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
 use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
+use crate::interpreter::environment::Environment;
 use crate::interpreter::error::{RuntimeError, RuntimeErrorType};
 use crate::interpreter::parser::Parser;
 use crate::interpreter::scanner::token::object::Object;
@@ -22,14 +26,14 @@ use crate::interpreter::scanner::Scanner;
 use crate::interpreter::shell::Shell;
 use anyhow::{anyhow, Result};
 use std::io::Write;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::process::exit;
 use std::{fs, io};
 
 #[derive(Default)]
 pub struct Interpreter {
-    has_error: bool,
+    env: Environment,
 }
 
 impl Interpreter {
@@ -37,7 +41,6 @@ impl Interpreter {
         let mut shell = Shell::new();
         let shell_ref = shell.as_mut();
         loop {
-            self.has_error = false;
             print!("@> ");
             io::stdout().flush()?;
             let mut buf_line = String::new();
@@ -69,9 +72,7 @@ impl Interpreter {
         let mut parser = Parser::new(tokens);
         let ast = parser.parse()?;
 
-        if let Err(err) = self.interpret(ast) {
-            println!("{}", err)
-        };
+        self.interpret(ast)?;
 
         Ok(())
     }
@@ -91,6 +92,17 @@ impl Interpreter {
     #[inline]
     fn evaluate(&mut self, expr: &dyn Expr<Result<Object>>) -> Result<Object> {
         expr.accept(self)
+    }
+
+    #[inline]
+    fn handle_runtime_error(token: Token, res: Result<Object>) -> Result<Object> {
+        if let Err(err) = res {
+            if let Some(err_ty) = err.downcast_ref::<RuntimeErrorType>() {
+                return Err(anyhow!(RuntimeError::new(token, err_ty.clone())));
+            }
+            return Err(err);
+        }
+        res
     }
 
     pub fn error_by_token(token: Token, msg: &str) -> String {
@@ -130,7 +142,7 @@ impl ExprVisitor<Result<Object>> for Interpreter {
         let left = self.evaluate(binary.get_left())?;
         let right = self.evaluate(binary.get_right())?;
 
-        match binary.get_op_type() {
+        let res = match binary.get_op_type() {
             TokenType::Equal => Ok(Object::Bool(left == right)),
             TokenType::BangEqual => Ok(Object::Bool(left != right)),
             TokenType::Greater => Ok(Object::Bool(left > right)),
@@ -145,7 +157,9 @@ impl ExprVisitor<Result<Object>> for Interpreter {
                 binary.get_token(),
                 RuntimeErrorType::UnsupportedBinaryOperator(binary.get_op_lexeme().into())
             ))),
-        }
+        };
+
+        Interpreter::handle_runtime_error(binary.get_token(), res)
     }
 
     fn visit_grouping(&mut self, grouping: &Grouping<Result<Object>>) -> Result<Object> {
@@ -158,14 +172,25 @@ impl ExprVisitor<Result<Object>> for Interpreter {
 
     fn visit_unary(&mut self, unary: &Unary<Result<Object>>) -> Result<Object> {
         let obj = self.evaluate(unary.get_right())?;
-        match unary.get_op_type() {
+        let res = match unary.get_op_type() {
             TokenType::Minus => -obj,
             TokenType::Bang => !obj,
             _ => Err(anyhow!(RuntimeError::new(
                 unary.get_token(),
                 RuntimeErrorType::UnsupportedBinaryOperator(unary.get_op_lexeme().into())
             ))),
-        }
+        };
+
+        Interpreter::handle_runtime_error(unary.get_token(), res)
+    }
+
+    fn visit_variable(&mut self, variable: &Variable) -> Result<Object> {
+        self.env.get(&variable.get_token())
+    }
+
+    fn visit_assign(&mut self, assign: &Assign<Result<Object>>) -> Result<Object> {
+        let value = self.evaluate(assign.get_value())?;
+        self.env.assign(&assign.get_token(), value.clone())
     }
 }
 
@@ -182,6 +207,15 @@ impl StmtVisitor<Result<Object>> for Interpreter {
     }
 
     fn visit_let(&mut self, stmt: &Let<Result<Object>>) -> Result<Object> {
-        todo!()
+        match stmt.get_initializer() {
+            Some(initializer) => {
+                let value = self.evaluate(initializer)?;
+                self.env.define(stmt.get_ident().get_lexeme(), value);
+            }
+            None => {
+                self.env.define(stmt.get_ident().get_lexeme(), Object::Nil);
+            }
+        }
+        Ok(Object::Void)
     }
 }

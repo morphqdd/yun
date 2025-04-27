@@ -1,7 +1,9 @@
+use crate::interpreter::ast::expr::assignment::Assign;
 use crate::interpreter::ast::expr::binary::Binary;
 use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::unary::Unary;
+use crate::interpreter::ast::expr::variable::Variable;
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 
 pub struct AstPrinter;
@@ -24,6 +26,14 @@ impl ExprVisitor<String> for AstPrinter {
 
     fn visit_unary(&mut self, unary: &Unary<String>) -> String {
         self.parenthesize(unary.get_op_lexeme(), vec![unary.get_right()])
+    }
+
+    fn visit_variable(&mut self, variable: &Variable) -> String {
+        self.parenthesize("variable", vec![variable])
+    }
+
+    fn visit_assign(&mut self, assign: &Assign<String>) -> String {
+        self.parenthesize("assign", vec![assign.get_value()])
     }
 }
 

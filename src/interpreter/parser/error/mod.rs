@@ -32,6 +32,10 @@ pub enum ParserErrorType {
     ExpectedMatchingParens,
     ExpectedExpression,
     ExpectedSemicolon,
+    ExpectedVariableName,
+    ExpectedSemicolonAfterVarDecl,
+    UndefinedVariable(String),
+    InvalidAssignmentTarget,
 }
 
 impl Display for ParserErrorType {
@@ -39,7 +43,13 @@ impl Display for ParserErrorType {
         match self {
             ParserErrorType::ExpectedMatchingParens => write!(f, "Expect ')', after expression!"),
             ParserErrorType::ExpectedExpression => write!(f, "Expected expression!"),
-            ParserErrorType::ExpectedSemicolon => write!(f, "Expected ';' after expression"),
+            ParserErrorType::ExpectedSemicolon => write!(f, "Expected ';' after expression!"),
+            ParserErrorType::ExpectedVariableName => write!(f, "Expected variable name!"),
+            ParserErrorType::ExpectedSemicolonAfterVarDecl => {
+                write!(f, "Expected ';' after variable declaration!")
+            }
+            ParserErrorType::UndefinedVariable(v) => write!(f, "Undefined variable: `{}`!", v),
+            ParserErrorType::InvalidAssignmentTarget => write!(f, "Invalid assignment target!"),
         }
     }
 }

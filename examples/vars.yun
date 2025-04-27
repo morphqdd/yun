@@ -1,0 +1,7 @@
+let hello = "Hello, ";
+let yun = "Yun!";
+print hello + yun;
+
+hello = "Bye, ";
+yun = "world!";
+print hello + yun;

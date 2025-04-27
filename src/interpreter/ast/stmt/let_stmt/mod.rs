@@ -1,26 +1,27 @@
 use crate::interpreter::ast::expr::Expr;
 use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
+use crate::interpreter::scanner::token::Token;
 use std::ops::Deref;
 
 pub struct Let<T> {
-    ident: String,
-    initializer: Box<dyn Expr<T>>,
+    ident: Token,
+    initializer: Option<Box<dyn Expr<T>>>,
 }
 
 impl<T> Let<T> {
-    pub fn new(ident: &str, initializer: Box<dyn Expr<T>>) -> Self {
-        Self {
-            ident: ident.into(),
-            initializer,
-        }
+    pub fn new(ident: Token, initializer: Option<Box<dyn Expr<T>>>) -> Self {
+        Self { ident, initializer }
     }
 
-    pub fn get_ident(&self) -> String {
+    pub fn get_ident(&self) -> Token {
         self.ident.clone()
     }
 
-    pub fn get_initializer(&self) -> &dyn Expr<T> {
-        self.initializer.deref()
+    pub fn get_initializer(&self) -> Option<&dyn Expr<T>> {
+        if let Some(initializer) = &self.initializer {
+            return Some(initializer.deref());
+        }
+        None
     }
 }
 

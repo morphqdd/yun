@@ -44,7 +44,7 @@ impl<T> Binary<T> {
     }
 }
 
-impl<T> Expr<T> for Binary<T> {
+impl<T: 'static> Expr<T> for Binary<T> {
     fn accept(&self, visitor: &mut dyn ExprVisitor<T>) -> T {
         visitor.visit_binary(self)
     }

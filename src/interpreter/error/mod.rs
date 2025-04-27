@@ -27,7 +27,7 @@ impl Display for RuntimeError {
 
 impl Error for RuntimeError {}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum RuntimeErrorType {
     CannotAddTypes(String, String),
     CannotSubtractTypes(String, String),
@@ -42,18 +42,18 @@ impl Display for RuntimeErrorType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             RuntimeErrorType::CannotAddTypes(ty1, ty2) => {
-                write!(f, "Cannot add types {} and {}", ty1, ty2)
+                write!(f, "Cannot add types '{}' and '{}'", ty1, ty2)
             }
             RuntimeErrorType::CannotSubtractTypes(ty1, ty2) => {
-                write!(f, "Cannot subtract {} and {}", ty1, ty2)
+                write!(f, "Cannot subtract '{}' and '{}'", ty1, ty2)
             }
             RuntimeErrorType::CannotMultiplyTypes(ty1, ty2) => {
-                write!(f, "Cannot multiply {} and {}", ty1, ty2)
+                write!(f, "Cannot multiply '{}' and '{}'", ty1, ty2)
             }
             RuntimeErrorType::CannotDivideTypes(ty1, ty2) => {
-                write!(f, "Cannot divide {} and {}", ty1, ty2)
+                write!(f, "Cannot divide '{}' and '{}'", ty1, ty2)
             }
-            RuntimeErrorType::CannotNegateType(ty) => write!(f, "Cannot negate {}", ty),
+            RuntimeErrorType::CannotNegateType(ty) => write!(f, "Cannot negate '{}'", ty),
             RuntimeErrorType::UnsupportedUnaryOperator(op) => {
                 write!(f, "Unsupported unary operator '{}'", op)
             }

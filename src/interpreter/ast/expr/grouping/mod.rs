@@ -17,7 +17,7 @@ impl<T> Grouping<T> {
     }
 }
 
-impl<T> Expr<T> for Grouping<T> {
+impl<T: 'static> Expr<T> for Grouping<T> {
     #[inline]
     fn accept(&self, visitor: &mut dyn ExprVisitor<T>) -> T {
         visitor.visit_grouping(self)
