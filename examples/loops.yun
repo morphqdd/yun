@@ -1,0 +1,22 @@
+let a = 1;
+let temp;
+
+for (let b = 1 ; b < 10000 ; b = temp + b) {
+    print a;
+    temp = a;
+    a = b;
+}
+
+let x = 0;
+
+while x < 10 {
+    if x < 5 {
+        print "Less then 5";
+    } else if x == 5 {
+        print "Equal 5";
+    } else {
+        print "Greater then 5";
+    }
+    print x;
+    x = x + 1;
+}

@@ -12,6 +12,7 @@ use crate::interpreter::ast::stmt::if_stmt::If;
 use crate::interpreter::ast::stmt::let_stmt::Let;
 use crate::interpreter::ast::stmt::print::Print;
 use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
+use crate::interpreter::ast::stmt::while_stmt::While;
 use crate::interpreter::ast::stmt::Stmt;
 use crate::interpreter::parser::error::{ParserError, ParserErrorType};
 use crate::interpreter::scanner::token::object::Object;
@@ -103,21 +104,72 @@ where
             return self.if_statement();
         }
 
+        if self._match(vec![TokenType::While]) {
+            return self.while_statement();
+        }
+
+        if self._match(vec![TokenType::For]) {
+            return self.for_statement();
+        }
+
         self.expr_statement()
     }
 
-    fn if_statement(&mut self) -> Result<Box<dyn Stmt<T>>> {
+    fn for_statement(&mut self) -> Result<Box<dyn Stmt<T>>> {
         self.consume(
             TokenType::LeftParen,
-            ParserErrorType::ExpectedLeftParenAfterIf,
+            ParserErrorType::ExpectedLeftParenAfterFor,
         )?;
 
-        let condition = self.expression()?;
+        let mut initializer: Option<Box<dyn Stmt<T>>> = None;
+        if self._match(vec![TokenType::Let]) {
+            initializer = Some(self.let_declaration()?);
+        } else {
+            initializer = Some(self.expr_statement()?);
+        }
 
+        let mut condition = None;
+        if !self.check(TokenType::Semicolon) {
+            condition = Some(self.expression()?);
+        }
+        self.consume(TokenType::Semicolon, ParserErrorType::ExpectedSemicolon)?;
+
+        let mut increment = None;
+        if !self.check(TokenType::Semicolon) {
+            increment = Some(self.expression()?);
+        }
         self.consume(
             TokenType::RightParen,
-            ParserErrorType::ExpectedRightParenAfterIfCondition,
+            ParserErrorType::ExpectedRightParenAfterForStatement,
         )?;
+
+        let mut body = self.statement()?;
+
+        if let Some(increment) = increment {
+            body = b!(Block::new(vec![body, b!(StmtExpr::new(increment))]));
+        }
+
+        if let Some(condition) = condition {
+            body = b!(While::new(condition, body));
+        }
+
+        if let Some(initializer) = initializer {
+            body = b!(Block::new(vec![initializer, body]));
+        }
+
+        Ok(body)
+    }
+
+    fn while_statement(&mut self) -> Result<Box<dyn Stmt<T>>> {
+        let condition = self.expression()?;
+
+        let stmt = self.statement()?;
+
+        Ok(b!(While::new(condition, stmt)))
+    }
+
+    fn if_statement(&mut self) -> Result<Box<dyn Stmt<T>>> {
+        let condition = self.expression()?;
 
         let then_branch = self.statement()?;
         let mut else_branch = None;

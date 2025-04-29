@@ -50,6 +50,20 @@ impl Not for Object {
     }
 }
 
+impl<'a> Not for &'a Object {
+    type Output = Result<Object>;
+
+    fn not(self) -> Self::Output {
+        match self {
+            Object::Bool(b) => Ok(Object::Bool(!b)),
+            Object::String(_) => Ok(Object::Bool(false)),
+            Object::Number(_) => Ok(Object::Bool(false)),
+            Object::Nil => Ok(Object::Bool(true)),
+            Object::Void => Ok(Object::Bool(true)),
+        }
+    }
+}
+
 impl Add for Object {
     type Output = Result<Object>;
 

@@ -39,6 +39,10 @@ pub enum ParserErrorType {
     ExpectedMatchingBrace,
     ExpectedLeftParenAfterIf,
     ExpectedRightParenAfterIfCondition,
+    ExpectedRightParenAfterForStatement,
+    ExpectedLeftParenAfterFor,
+    ExpectedLeftParenAfterWhile,
+    ExpectedRightParenAfterWhileStatement,
 }
 
 impl Display for ParserErrorType {
@@ -57,6 +61,14 @@ impl Display for ParserErrorType {
             ParserErrorType::ExpectedLeftParenAfterIf => write!(f, "Expected '(' after if!"),
             ParserErrorType::ExpectedRightParenAfterIfCondition => {
                 write!(f, "Expected ')' after if condition!")
+            }
+            ParserErrorType::ExpectedRightParenAfterForStatement => {
+                write!(f, "Expected ')' after for statement!")
+            }
+            ParserErrorType::ExpectedLeftParenAfterFor => write!(f, "Expected '( after for!"),
+            ParserErrorType::ExpectedLeftParenAfterWhile => write!(f, "Expected '( after while!"),
+            ParserErrorType::ExpectedRightParenAfterWhileStatement => {
+                write!(f, "Expected ')' after while statement!")
             }
         }
     }

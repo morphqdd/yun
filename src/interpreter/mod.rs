@@ -18,6 +18,7 @@ use crate::interpreter::ast::stmt::if_stmt::If;
 use crate::interpreter::ast::stmt::let_stmt::Let;
 use crate::interpreter::ast::stmt::print::Print;
 use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
+use crate::interpreter::ast::stmt::while_stmt::While;
 use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
 use crate::interpreter::environment::Environment;
 use crate::interpreter::error::{RuntimeError, RuntimeErrorType};
@@ -138,6 +139,10 @@ impl Interpreter {
         res
     }
 
+    fn is_truly(&self, obj: &Object) -> Result<bool> {
+        Ok((!(!obj)?)? == Object::Bool(true))
+    }
+
     pub fn error_by_token(token: Token, msg: &str) -> String {
         if token.get_type().eq(&TokenType::Eof) {
             Interpreter::report(token.get_line(), token.get_pos_in_line(), "at end", msg)
@@ -176,7 +181,7 @@ impl ExprVisitor<Result<Object>> for Interpreter {
         let right = self.evaluate(binary.get_right())?;
 
         let res = match binary.get_op_type() {
-            TokenType::Equal => Ok(Object::Bool(left == right)),
+            TokenType::EqualEqual => Ok(Object::Bool(left == right)),
             TokenType::BangEqual => Ok(Object::Bool(left != right)),
             TokenType::Greater => Ok(Object::Bool(left > right)),
             TokenType::Less => Ok(Object::Bool(left < right)),
@@ -241,10 +246,10 @@ impl ExprVisitor<Result<Object>> for Interpreter {
     fn visit_logical(&mut self, logical: &Logical<Result<Object>>) -> Result<Object> {
         let left = self.evaluate(logical.get_left())?;
         if logical.get_operator().get_type().eq(&TokenType::Or) {
-            if (!(!left.clone())?)? == Object::Bool(true) {
+            if self.is_truly(&left)? {
                 return Ok(left);
             }
-        } else if (!(!left.clone())?)? != Object::Bool(true) {
+        } else if !self.is_truly(&left)? {
             return Ok(left);
         }
 
@@ -311,6 +316,15 @@ impl StmtVisitor<Result<Object>> for Interpreter {
             self.execute(else_stmt)?;
         }
 
+        Ok(Object::Void)
+    }
+
+    fn visit_while(&mut self, stmt: &While<Result<Object>>) -> Result<Object> {
+        let mut cond = self.evaluate(stmt.get_cond())?;
+        while self.is_truly(&cond)? {
+            self.execute(stmt.get_stmt())?;
+            cond = self.evaluate(stmt.get_cond())?;
+        }
         Ok(Object::Void)
     }
 }
