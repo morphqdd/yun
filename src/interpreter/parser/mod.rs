@@ -3,10 +3,12 @@ use crate::interpreter::ast::expr::assignment::Assign;
 use crate::interpreter::ast::expr::binary::Binary;
 use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
+use crate::interpreter::ast::expr::logical::Logical;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
 use crate::interpreter::ast::expr::Expr;
 use crate::interpreter::ast::stmt::block::Block;
+use crate::interpreter::ast::stmt::if_stmt::If;
 use crate::interpreter::ast::stmt::let_stmt::Let;
 use crate::interpreter::ast::stmt::print::Print;
 use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
@@ -97,7 +99,34 @@ where
             return Ok(b!(Block::new(self.block_statement()?)));
         }
 
+        if self._match(vec![TokenType::If]) {
+            return self.if_statement();
+        }
+
         self.expr_statement()
+    }
+
+    fn if_statement(&mut self) -> Result<Box<dyn Stmt<T>>> {
+        self.consume(
+            TokenType::LeftParen,
+            ParserErrorType::ExpectedLeftParenAfterIf,
+        )?;
+
+        let condition = self.expression()?;
+
+        self.consume(
+            TokenType::RightParen,
+            ParserErrorType::ExpectedRightParenAfterIfCondition,
+        )?;
+
+        let then_branch = self.statement()?;
+        let mut else_branch = None;
+
+        if self._match(vec![TokenType::Else]) {
+            else_branch = Some(self.statement()?);
+        }
+
+        Ok(b!(If::new(condition, then_branch, else_branch)))
     }
 
     fn block_statement(&mut self) -> Result<Vec<Box<dyn Stmt<T>>>> {
@@ -131,7 +160,7 @@ where
     }
 
     fn assignment(&mut self) -> Result<Box<dyn Expr<T>>> {
-        let expr = self.equality()?;
+        let expr = self.logic_or()?;
         if self._match(vec![TokenType::Equal]) {
             let token = self.previous();
             let value = self.assignment()?;
@@ -145,6 +174,30 @@ where
                 token,
                 ParserErrorType::InvalidAssignmentTarget
             )));
+        }
+
+        Ok(expr)
+    }
+
+    fn logic_or(&mut self) -> Result<Box<dyn Expr<T>>> {
+        let mut expr = self.logic_and()?;
+
+        while self._match(vec![TokenType::Or]) {
+            let token = self.previous();
+            let right = self.logic_and()?;
+            expr = b!(Logical::new(expr, token, right));
+        }
+
+        Ok(expr)
+    }
+
+    fn logic_and(&mut self) -> Result<Box<dyn Expr<T>>> {
+        let mut expr = self.equality()?;
+
+        while self._match(vec![TokenType::And]) {
+            let token = self.previous();
+            let right = self.equality()?;
+            expr = b!(Logical::new(expr, token, right));
         }
 
         Ok(expr)

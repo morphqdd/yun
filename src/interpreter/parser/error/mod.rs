@@ -37,6 +37,8 @@ pub enum ParserErrorType {
     UndefinedVariable(String),
     InvalidAssignmentTarget,
     ExpectedMatchingBrace,
+    ExpectedLeftParenAfterIf,
+    ExpectedRightParenAfterIfCondition,
 }
 
 impl Display for ParserErrorType {
@@ -52,6 +54,10 @@ impl Display for ParserErrorType {
             ParserErrorType::UndefinedVariable(v) => write!(f, "Undefined variable: `{}`!", v),
             ParserErrorType::InvalidAssignmentTarget => write!(f, "Invalid assignment target!"),
             ParserErrorType::ExpectedMatchingBrace => write!(f, "Expected '}}' after block!"),
+            ParserErrorType::ExpectedLeftParenAfterIf => write!(f, "Expected '(' after if!"),
+            ParserErrorType::ExpectedRightParenAfterIfCondition => {
+                write!(f, "Expected ')' after if condition!")
+            }
         }
     }
 }

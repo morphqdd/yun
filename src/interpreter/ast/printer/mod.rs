@@ -2,6 +2,7 @@ use crate::interpreter::ast::expr::assignment::Assign;
 use crate::interpreter::ast::expr::binary::Binary;
 use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
+use crate::interpreter::ast::expr::logical::Logical;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
@@ -34,6 +35,13 @@ impl ExprVisitor<String> for AstPrinter {
 
     fn visit_assign(&mut self, assign: &Assign<String>) -> String {
         self.parenthesize("assign", vec![assign.get_value()])
+    }
+
+    fn visit_logical(&mut self, logical: &Logical<String>) -> String {
+        self.parenthesize(
+            logical.get_operator().get_lexeme(),
+            vec![logical.get_left(), logical.get_right()],
+        )
     }
 }
 

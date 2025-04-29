@@ -9,10 +9,12 @@ use crate::interpreter::ast::expr::assignment::Assign;
 use crate::interpreter::ast::expr::binary::Binary;
 use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
+use crate::interpreter::ast::expr::logical::Logical;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::ast::stmt::block::Block;
+use crate::interpreter::ast::stmt::if_stmt::If;
 use crate::interpreter::ast::stmt::let_stmt::Let;
 use crate::interpreter::ast::stmt::print::Print;
 use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
@@ -235,6 +237,19 @@ impl ExprVisitor<Result<Object>> for Interpreter {
             RuntimeErrorType::BugEnvironmentNotInit
         )))
     }
+
+    fn visit_logical(&mut self, logical: &Logical<Result<Object>>) -> Result<Object> {
+        let left = self.evaluate(logical.get_left())?;
+        if logical.get_operator().get_type().eq(&TokenType::Or) {
+            if (!(!left.clone())?)? == Object::Bool(true) {
+                return Ok(left);
+            }
+        } else if (!(!left.clone())?)? != Object::Bool(true) {
+            return Ok(left);
+        }
+
+        self.evaluate(logical.get_right())
+    }
 }
 
 impl StmtVisitor<Result<Object>> for Interpreter {
@@ -286,6 +301,16 @@ impl StmtVisitor<Result<Object>> for Interpreter {
             stmt.get_stmts(),
             Rc::new(RefCell::new(Environment::new(self.env.clone()))),
         )?;
+        Ok(Object::Void)
+    }
+
+    fn visit_if(&mut self, stmt: &If<Result<Object>>) -> Result<Object> {
+        if self.evaluate(stmt.get_cond())? == Object::Bool(true) {
+            self.execute(stmt.get_then_stmt())?;
+        } else if let Some(else_stmt) = stmt.get_else_stmt() {
+            self.execute(else_stmt)?;
+        }
+
         Ok(Object::Void)
     }
 }

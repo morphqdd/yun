@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 use std::fmt::Display;
 use std::ops::{Add, Div, Mul, Neg, Not, Sub};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Object {
     String(String),
     Number(f64),
@@ -42,10 +42,10 @@ impl Not for Object {
     fn not(self) -> Self::Output {
         match self {
             Object::Bool(b) => Ok(Object::Bool(!b)),
-            Object::String(_) => Ok(Object::Bool(true)),
-            Object::Number(_) => Ok(Object::Bool(true)),
-            Object::Nil => Ok(Object::Bool(false)),
-            Object::Void => Ok(Object::Bool(false)),
+            Object::String(_) => Ok(Object::Bool(false)),
+            Object::Number(_) => Ok(Object::Bool(false)),
+            Object::Nil => Ok(Object::Bool(true)),
+            Object::Void => Ok(Object::Bool(true)),
         }
     }
 }
@@ -103,6 +103,19 @@ impl Div for Object {
                 self.get_type(),
                 rhs.get_type()
             ))),
+        }
+    }
+}
+
+impl PartialEq<Self> for Object {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Object::Number(a), Object::Number(b)) => a == b,
+            (Object::String(a), Object::String(b)) => a == b,
+            (Object::Bool(a), Object::Bool(b)) => a == b,
+            (Object::Nil, Object::Nil) => true,
+            (Object::Void, Object::Void) => true,
+            _ => false,
         }
     }
 }
