@@ -1,6 +1,7 @@
 use crate::b;
 use crate::interpreter::ast::expr::assignment::Assign;
 use crate::interpreter::ast::expr::binary::Binary;
+use crate::interpreter::ast::expr::call::Call;
 use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::logical::Logical;
@@ -311,11 +312,48 @@ where
     fn unary(&mut self) -> Result<Box<dyn Expr<T>>> {
         if self._match(vec![TokenType::Bang, TokenType::Minus]) {
             let token = self.previous();
-            let right = self.primary()?;
+            let right = self.call()?;
             return Ok(b!(Unary::new(token, right)));
         }
 
-        self.primary()
+        self.call()
+    }
+
+    fn call(&mut self) -> Result<Box<dyn Expr<T>>> {
+        let mut expr = self.primary()?;
+        loop {
+            if self._match(vec![TokenType::LeftParen]) {
+                expr = self.finish_call(expr)?;
+            } else {
+                break;
+            }
+        }
+
+        Ok(expr)
+    }
+
+    fn finish_call(&mut self, expr: Box<dyn Expr<T>>) -> Result<Box<dyn Expr<T>>> {
+        let mut arguments = vec![];
+        if !self.check(TokenType::RightParen) {
+            arguments.push(self.expression()?);
+            while self._match(vec![TokenType::Comma]) {
+                arguments.push(self.expression()?);
+            }
+        }
+
+        let paren = self.consume(
+            TokenType::RightParen,
+            ParserErrorType::ExpectedRightParenAfterArguments,
+        )?;
+
+        if arguments.len() > 255 {
+            return Err(anyhow!(ParserError::new(
+                paren,
+                ParserErrorType::CountOfArgsGreaterThen255
+            )));
+        }
+
+        Ok(b!(Call::new(expr, paren, arguments)))
     }
 
     fn primary(&mut self) -> Result<Box<dyn Expr<T>>> {

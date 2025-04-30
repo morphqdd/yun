@@ -1,3 +1,4 @@
+use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::Token;
 use crate::interpreter::Interpreter;
 use std::error::Error;
@@ -39,6 +40,9 @@ pub enum RuntimeErrorType {
     BugEnvironmentNotInit,
     UndefinedVariable(String),
     VariableIsNotInit(String),
+    ArityOfFuncNotEqSizeOfArgs,
+    NotCallable,
+    UserPanicWithMsg(Object),
 }
 
 impl Display for RuntimeErrorType {
@@ -68,6 +72,11 @@ impl Display for RuntimeErrorType {
             RuntimeErrorType::VariableIsNotInit(v) => {
                 write!(f, "Variable '{}' is not initialized", v)
             }
+            RuntimeErrorType::ArityOfFuncNotEqSizeOfArgs => {
+                write!(f, "Arity of functions not equal size of args")
+            }
+            RuntimeErrorType::NotCallable => write!(f, "Not callable"),
+            RuntimeErrorType::UserPanicWithMsg(msg) => write!(f, "Panic!: {}", msg),
         }
     }
 }

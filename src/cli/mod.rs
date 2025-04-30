@@ -1,9 +1,9 @@
-use std::path::PathBuf;
 use clap::Parser;
+use std::path::PathBuf;
 
 #[derive(Clone, Debug, Parser)]
 pub struct Cli {
-    path: Option<PathBuf>
+    path: Option<PathBuf>,
 }
 
 impl Cli {

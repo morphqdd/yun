@@ -1,4 +1,5 @@
 use crate::interpreter::error::RuntimeErrorType;
+use crate::interpreter::Interpreter;
 use anyhow::{anyhow, Result};
 use std::cmp::Ordering;
 use std::fmt::Display;
@@ -9,6 +10,10 @@ pub enum Object {
     String(String),
     Number(f64),
     Bool(bool),
+    Callable {
+        call: fn(interpreter: &mut Interpreter, arguments: Vec<Object>) -> Result<Object>,
+        arity: fn() -> usize,
+    },
     Nil,
     Void,
 }
@@ -21,6 +26,7 @@ impl Object {
             Object::Bool(_) => "boolean".into(),
             Object::Nil => "nil".into(),
             Object::Void => "void".into(),
+            Object::Callable { .. } => "<callable>".into(),
         }
     }
 }
@@ -46,6 +52,7 @@ impl Not for Object {
             Object::Number(_) => Ok(Object::Bool(false)),
             Object::Nil => Ok(Object::Bool(true)),
             Object::Void => Ok(Object::Bool(true)),
+            Object::Callable { .. } => Ok(Object::Bool(false)),
         }
     }
 }
@@ -60,6 +67,7 @@ impl<'a> Not for &'a Object {
             Object::Number(_) => Ok(Object::Bool(false)),
             Object::Nil => Ok(Object::Bool(true)),
             Object::Void => Ok(Object::Bool(true)),
+            Object::Callable { .. } => Ok(Object::Bool(false)),
         }
     }
 }
@@ -154,6 +162,7 @@ impl Display for Object {
             Object::Bool(b) => write!(f, "{}", b),
             Object::Nil => write!(f, "nil"),
             Object::Void => write!(f, ""),
+            Object::Callable { call, arity } => write!(f, "<callable> {:?} {:?}", call, arity),
         }
     }
 }

@@ -1,0 +1,8 @@
+let totalTime = 0;
+let n = 100;
+for (let i = 0; i < n; i = i + 1) {
+    let time1 = clock();
+    for (let b = 1; b < 1000; b = b + 1) {}
+    totalTime = totalTime + clock() - time1;
+}
+print totalTime / n / 1000;

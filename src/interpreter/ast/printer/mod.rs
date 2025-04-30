@@ -1,5 +1,6 @@
 use crate::interpreter::ast::expr::assignment::Assign;
 use crate::interpreter::ast::expr::binary::Binary;
+use crate::interpreter::ast::expr::call::Call;
 use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::logical::Logical;
@@ -42,6 +43,10 @@ impl ExprVisitor<String> for AstPrinter {
             logical.get_operator().get_lexeme(),
             vec![logical.get_left(), logical.get_right()],
         )
+    }
+
+    fn visit_call(&mut self, call: &Call<String>) -> String {
+        todo!()
     }
 }
 

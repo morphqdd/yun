@@ -43,6 +43,8 @@ pub enum ParserErrorType {
     ExpectedLeftParenAfterFor,
     ExpectedLeftParenAfterWhile,
     ExpectedRightParenAfterWhileStatement,
+    ExpectedRightParenAfterArguments,
+    CountOfArgsGreaterThen255,
 }
 
 impl Display for ParserErrorType {
@@ -69,6 +71,12 @@ impl Display for ParserErrorType {
             ParserErrorType::ExpectedLeftParenAfterWhile => write!(f, "Expected '( after while!"),
             ParserErrorType::ExpectedRightParenAfterWhileStatement => {
                 write!(f, "Expected ')' after while statement!")
+            }
+            ParserErrorType::ExpectedRightParenAfterArguments => {
+                write!(f, "Expected ')' after arguments!")
+            }
+            ParserErrorType::CountOfArgsGreaterThen255 => {
+                write!(f, "Number of arguments greater than 255!")
             }
         }
     }

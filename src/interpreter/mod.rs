@@ -1,12 +1,15 @@
 pub mod ast;
 pub mod environment;
 pub mod error;
+pub mod native_functions;
 pub mod parser;
 pub mod scanner;
 pub mod shell;
+pub mod yun_callable;
 
 use crate::interpreter::ast::expr::assignment::Assign;
 use crate::interpreter::ast::expr::binary::Binary;
+use crate::interpreter::ast::expr::call::Call;
 use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::logical::Logical;
@@ -31,7 +34,7 @@ use crate::interpreter::shell::Shell;
 use anyhow::{anyhow, Result};
 use std::cell::RefCell;
 use std::io::Write;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
@@ -43,8 +46,43 @@ pub struct Interpreter {
 
 impl Default for Interpreter {
     fn default() -> Self {
+        let mut env = Environment::default();
+        env.define(
+            "clock",
+            Some(Object::Callable {
+                call: |_interpreter, _arguments| -> Result<Object> {
+                    Ok(Object::Number(
+                        std::time::SystemTime::now()
+                            .duration_since(std::time::SystemTime::UNIX_EPOCH)?
+                            .as_micros() as f64,
+                    ))
+                },
+                arity: || 0,
+            }),
+        );
+
+        env.define(
+            "panic",
+            Some(Object::Callable {
+                call: |_, args| {
+                    Err(anyhow!(
+                        RuntimeErrorType::UserPanicWithMsg(args[0].clone(),)
+                    ))
+                },
+                arity: || 1,
+            }),
+        );
+
+        env.define(
+            "string",
+            Some(Object::Callable {
+                call: |_, args| Ok(Object::String(args[0].clone().to_string())),
+                arity: || 1,
+            }),
+        );
+
         Self {
-            env: Some(Default::default()),
+            env: Some(Rc::new(RefCell::new(env))),
         }
     }
 }
@@ -132,11 +170,21 @@ impl Interpreter {
     fn handle_runtime_error(token: Token, res: Result<Object>) -> Result<Object> {
         if let Err(err) = res {
             if let Some(err_ty) = err.downcast_ref::<RuntimeErrorType>() {
-                return Err(anyhow!(RuntimeError::new(token, err_ty.clone())));
+                return match err_ty {
+                    RuntimeErrorType::UserPanicWithMsg(msg) => {
+                        Err(anyhow!(Interpreter::panic_handler(token, &msg.to_string())))
+                    }
+                    _ => Err(anyhow!(RuntimeError::new(token, err_ty.clone()))),
+                };
             }
             return Err(err);
         }
         res
+    }
+
+    #[inline]
+    fn panic_handler(token: Token, msg: &str) -> String {
+        Interpreter::report("Panic", token.get_line(), token.get_pos_in_line(), "", msg)
     }
 
     fn is_truly(&self, obj: &Object) -> Result<bool> {
@@ -145,9 +193,16 @@ impl Interpreter {
 
     pub fn error_by_token(token: Token, msg: &str) -> String {
         if token.get_type().eq(&TokenType::Eof) {
-            Interpreter::report(token.get_line(), token.get_pos_in_line(), "at end", msg)
+            Interpreter::report(
+                "Error",
+                token.get_line(),
+                token.get_pos_in_line(),
+                "at end",
+                msg,
+            )
         } else {
             Interpreter::report(
+                "Error",
                 token.get_line(),
                 token.get_pos_in_line(),
                 &format!("at '{}'", token.get_lexeme()),
@@ -157,14 +212,15 @@ impl Interpreter {
     }
 
     fn error(line: usize, pos_in_line: usize, msg: &str) -> String {
-        Interpreter::report(line, pos_in_line, "", msg)
+        Interpreter::report("Error", line, pos_in_line, "", msg)
     }
 
-    fn report(line: usize, pos_in_line: usize, _where: &str, msg: &str) -> String {
+    fn report(report_ty: &str, line: usize, pos_in_line: usize, _where: &str, msg: &str) -> String {
         format!(
-            "[{}:{}] Error{}: {}\n",
+            "[{}:{}] {}{}: {}\n",
             line,
             pos_in_line,
+            report_ty,
             if _where.is_empty() {
                 "".to_owned()
             } else {
@@ -254,6 +310,30 @@ impl ExprVisitor<Result<Object>> for Interpreter {
         }
 
         self.evaluate(logical.get_right())
+    }
+
+    fn visit_call(&mut self, call_: &Call<Result<Object>>) -> Result<Object> {
+        let callable = self.evaluate(call_.get_callable())?;
+        let mut args: Vec<Object> = Vec::new();
+        for arg in call_.get_args() {
+            args.push(self.evaluate(arg)?);
+        }
+
+        match callable {
+            Object::Callable { call, arity } => {
+                if args.len() != arity() {
+                    return Err(anyhow!(RuntimeError::new(
+                        call_.get_token(),
+                        RuntimeErrorType::ArityOfFuncNotEqSizeOfArgs
+                    )));
+                }
+                Interpreter::handle_runtime_error(call_.get_token(), call(self, args))
+            }
+            _ => Err(anyhow!(RuntimeError::new(
+                call_.get_token(),
+                RuntimeErrorType::NotCallable
+            ))),
+        }
     }
 }
 
