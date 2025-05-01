@@ -1,11 +1,9 @@
 pub mod ast;
 pub mod environment;
 pub mod error;
-pub mod native_functions;
 pub mod parser;
 pub mod scanner;
 pub mod shell;
-pub mod yun_callable;
 
 use crate::interpreter::ast::expr::assignment::Assign;
 use crate::interpreter::ast::expr::binary::Binary;
@@ -24,14 +22,14 @@ use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
 use crate::interpreter::ast::stmt::while_stmt::While;
 use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
 use crate::interpreter::environment::Environment;
-use crate::interpreter::error::{RuntimeError, RuntimeErrorType};
+use crate::interpreter::error::Result;
+use crate::interpreter::error::{InterpreterError, RuntimeError, RuntimeErrorType};
 use crate::interpreter::parser::Parser;
 use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use crate::interpreter::scanner::Scanner;
 use crate::interpreter::shell::Shell;
-use anyhow::{anyhow, Result};
 use std::cell::RefCell;
 use std::io::Write;
 use std::ops::{Deref, DerefMut};
@@ -53,7 +51,8 @@ impl Default for Interpreter {
                 call: |_interpreter, _arguments| -> Result<Object> {
                     Ok(Object::Number(
                         std::time::SystemTime::now()
-                            .duration_since(std::time::SystemTime::UNIX_EPOCH)?
+                            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                            .unwrap()
                             .as_micros() as f64,
                     ))
                 },
@@ -64,11 +63,7 @@ impl Default for Interpreter {
         env.define(
             "panic",
             Some(Object::Callable {
-                call: |_, args| {
-                    Err(anyhow!(
-                        RuntimeErrorType::UserPanicWithMsg(args[0].clone(),)
-                    ))
-                },
+                call: |_, args| Err(RuntimeErrorType::UserPanicWithMsg(args[0].clone()).into()),
                 arity: || 1,
             }),
         );
@@ -93,7 +88,7 @@ impl Interpreter {
         let shell_ref = shell.as_mut();
         loop {
             print!("@> ");
-            io::stdout().flush()?;
+            io::stdout().flush().unwrap();
             let mut buf_line = String::new();
             if let Err(err) = io::stdin().read_line(&mut buf_line) {
                 print!("{}", err);
@@ -112,7 +107,7 @@ impl Interpreter {
     }
 
     pub fn run_script(mut self, path: &PathBuf) -> Result<()> {
-        let code = fs::read_to_string(path)?;
+        let code = fs::read_to_string(path).unwrap();
         if let Err(err) = self.run(&code) {
             println!("{}", err);
             exit(65)
@@ -135,19 +130,19 @@ impl Interpreter {
     fn interpret(&mut self, statements: Vec<Box<dyn Stmt<Result<Object>>>>) -> Result<Object> {
         let mut res = Object::Void;
         for stmt in statements {
-            res = self.execute(stmt.deref())?;
+            res = self.execute(stmt)?;
         }
         Ok(res)
     }
 
     fn execute_block(
         &mut self,
-        statements: &[Box<dyn Stmt<Result<Object>>>],
+        statements: Vec<Box<dyn Stmt<Result<Object>>>>,
         environment: Rc<RefCell<Environment>>,
     ) -> Result<Object> {
         let previous = self.env.replace(environment);
         for stmt in statements {
-            if let Err(err) = self.execute(stmt.deref()) {
+            if let Err(err) = self.execute(stmt) {
                 self.env.replace(previous.unwrap());
                 return Err(err);
             }
@@ -157,7 +152,7 @@ impl Interpreter {
     }
 
     #[inline]
-    fn execute(&mut self, statement: &dyn Stmt<Result<Object>>) -> Result<Object> {
+    fn execute(&mut self, statement: Box<dyn Stmt<Result<Object>>>) -> Result<Object> {
         statement.accept(self)
     }
 
@@ -169,12 +164,12 @@ impl Interpreter {
     #[inline]
     fn handle_runtime_error(token: Token, res: Result<Object>) -> Result<Object> {
         if let Err(err) = res {
-            if let Some(err_ty) = err.downcast_ref::<RuntimeErrorType>() {
-                return match err_ty {
+            if let InterpreterError::RuntimeErrorType(runtime_ty) = err {
+                return match runtime_ty {
                     RuntimeErrorType::UserPanicWithMsg(msg) => {
-                        Err(anyhow!(Interpreter::panic_handler(token, &msg.to_string())))
+                        Err(Interpreter::panic_handler(token, &msg.to_string()).into())
                     }
-                    _ => Err(anyhow!(RuntimeError::new(token, err_ty.clone()))),
+                    _ => Err(RuntimeError::new(token, runtime_ty).into()),
                 };
             }
             return Err(err);
@@ -247,10 +242,11 @@ impl ExprVisitor<Result<Object>> for Interpreter {
             TokenType::Minus => left - right,
             TokenType::Star => left * right,
             TokenType::Slash => left / right,
-            _ => Err(anyhow!(RuntimeError::new(
+            _ => Err(RuntimeError::new(
                 binary.get_token(),
-                RuntimeErrorType::UnsupportedBinaryOperator(binary.get_op_lexeme().into())
-            ))),
+                RuntimeErrorType::UnsupportedBinaryOperator(binary.get_op_lexeme().into()),
+            )
+            .into()),
         };
 
         Interpreter::handle_runtime_error(binary.get_token(), res)
@@ -269,10 +265,11 @@ impl ExprVisitor<Result<Object>> for Interpreter {
         let res = match unary.get_op_type() {
             TokenType::Minus => -obj,
             TokenType::Bang => !obj,
-            _ => Err(anyhow!(RuntimeError::new(
+            _ => Err(RuntimeError::new(
                 unary.get_token(),
-                RuntimeErrorType::UnsupportedBinaryOperator(unary.get_op_lexeme().into())
-            ))),
+                RuntimeErrorType::UnsupportedBinaryOperator(unary.get_op_lexeme().into()),
+            )
+            .into()),
         };
 
         Interpreter::handle_runtime_error(unary.get_token(), res)
@@ -282,10 +279,11 @@ impl ExprVisitor<Result<Object>> for Interpreter {
         if let Some(env) = &self.env {
             return env.borrow().get(&variable.get_token());
         }
-        Err(anyhow!(RuntimeError::new(
+        Err(RuntimeError::new(
             variable.get_token(),
-            RuntimeErrorType::BugEnvironmentNotInit
-        )))
+            RuntimeErrorType::BugEnvironmentNotInit,
+        )
+        .into())
     }
 
     fn visit_assign(&mut self, assign: &Assign<Result<Object>>) -> Result<Object> {
@@ -293,10 +291,7 @@ impl ExprVisitor<Result<Object>> for Interpreter {
         if let Some(env) = &self.env {
             return env.borrow_mut().assign(&assign.get_token(), value.clone());
         }
-        Err(anyhow!(RuntimeError::new(
-            assign.get_token(),
-            RuntimeErrorType::BugEnvironmentNotInit
-        )))
+        Err(RuntimeError::new(assign.get_token(), RuntimeErrorType::BugEnvironmentNotInit).into())
     }
 
     fn visit_logical(&mut self, logical: &Logical<Result<Object>>) -> Result<Object> {
@@ -322,43 +317,42 @@ impl ExprVisitor<Result<Object>> for Interpreter {
         match callable {
             Object::Callable { call, arity } => {
                 if args.len() != arity() {
-                    return Err(anyhow!(RuntimeError::new(
+                    return Err(RuntimeError::new(
                         call_.get_token(),
-                        RuntimeErrorType::ArityOfFuncNotEqSizeOfArgs
-                    )));
+                        RuntimeErrorType::ArityOfFuncNotEqSizeOfArgs,
+                    )
+                    .into());
                 }
                 Interpreter::handle_runtime_error(call_.get_token(), call(self, args))
             }
-            _ => Err(anyhow!(RuntimeError::new(
-                call_.get_token(),
-                RuntimeErrorType::NotCallable
-            ))),
+            _ => Err(RuntimeError::new(call_.get_token(), RuntimeErrorType::NotCallable).into()),
         }
     }
 }
 
 impl StmtVisitor<Result<Object>> for Interpreter {
-    fn visit_expr(&mut self, stmt: &StmtExpr<Result<Object>>) -> Result<Object> {
+    fn visit_expr(&mut self, stmt: Box<StmtExpr<Result<Object>>>) -> Result<Object> {
         self.evaluate(stmt.expr())
     }
 
-    fn visit_print(&mut self, stmt: &Print<Result<Object>>) -> Result<Object> {
+    fn visit_print(&mut self, stmt: Box<Print<Result<Object>>>) -> Result<Object> {
         let value = self.evaluate(stmt.expr())?;
         println!("{}", value);
         Ok(Object::Void)
     }
 
-    fn visit_let(&mut self, stmt: &Let<Result<Object>>) -> Result<Object> {
+    fn visit_let(&mut self, stmt: Box<Let<Result<Object>>>) -> Result<Object> {
         match stmt.get_initializer() {
             Some(initializer) => {
                 let value = self.evaluate(initializer)?;
 
                 match &self.env {
                     None => {
-                        return Err(anyhow!(RuntimeError::new(
+                        return Err(RuntimeError::new(
                             stmt.get_ident(),
-                            RuntimeErrorType::BugEnvironmentNotInit
-                        )));
+                            RuntimeErrorType::BugEnvironmentNotInit,
+                        )
+                        .into());
                     }
                     Some(env) => {
                         env.borrow_mut()
@@ -368,10 +362,11 @@ impl StmtVisitor<Result<Object>> for Interpreter {
             }
             None => match &self.env {
                 None => {
-                    return Err(anyhow!(RuntimeError::new(
+                    return Err(RuntimeError::new(
                         stmt.get_ident(),
-                        RuntimeErrorType::BugEnvironmentNotInit
-                    )));
+                        RuntimeErrorType::BugEnvironmentNotInit,
+                    )
+                    .into());
                 }
                 Some(env) => {
                     env.borrow_mut().define(stmt.get_ident().get_lexeme(), None);
@@ -381,29 +376,31 @@ impl StmtVisitor<Result<Object>> for Interpreter {
         Ok(Object::Void)
     }
 
-    fn visit_block(&mut self, stmt: &Block<Result<Object>>) -> Result<Object> {
+    fn visit_block(&mut self, stmt: Box<Block<Result<Object>>>) -> Result<Object> {
         self.execute_block(
-            stmt.get_stmts(),
+            stmt.extract(),
             Rc::new(RefCell::new(Environment::new(self.env.clone()))),
         )?;
         Ok(Object::Void)
     }
 
-    fn visit_if(&mut self, stmt: &If<Result<Object>>) -> Result<Object> {
-        if self.evaluate(stmt.get_cond())? == Object::Bool(true) {
-            self.execute(stmt.get_then_stmt())?;
-        } else if let Some(else_stmt) = stmt.get_else_stmt() {
+    fn visit_if(&mut self, stmt: Box<If<Result<Object>>>) -> Result<Object> {
+        let (cond, then, else_) = stmt.extract();
+        if self.evaluate(cond.deref())? == Object::Bool(true) {
+            self.execute(then)?;
+        } else if let Some(else_stmt) = else_ {
             self.execute(else_stmt)?;
         }
 
         Ok(Object::Void)
     }
 
-    fn visit_while(&mut self, stmt: &While<Result<Object>>) -> Result<Object> {
-        let mut cond = self.evaluate(stmt.get_cond())?;
-        while self.is_truly(&cond)? {
-            self.execute(stmt.get_stmt())?;
-            cond = self.evaluate(stmt.get_cond())?;
+    fn visit_while(&mut self, stmt: Box<While<Result<Object>>>) -> Result<Object> {
+        let (cond, stmt) = stmt.extract();
+        let mut evaluated_cond = self.evaluate(cond.deref())?;
+        while self.is_truly(&evaluated_cond)? {
+            self.execute(stmt.clone())?;
+            evaluated_cond = self.evaluate(cond.deref())?;
         }
         Ok(Object::Void)
     }

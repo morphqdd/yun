@@ -1,6 +1,6 @@
+use crate::interpreter::error::Result;
 use crate::interpreter::error::RuntimeErrorType;
 use crate::interpreter::Interpreter;
-use anyhow::{anyhow, Result};
 use std::cmp::Ordering;
 use std::fmt::Display;
 use std::ops::{Add, Div, Mul, Neg, Not, Sub};
@@ -37,7 +37,7 @@ impl Neg for Object {
     fn neg(self) -> Self::Output {
         match self {
             Object::Number(n) => Ok(Object::Number(-n)),
-            _ => Err(anyhow!(RuntimeErrorType::CannotNegateType(self.get_type()))),
+            _ => Err(RuntimeErrorType::CannotNegateType(self.get_type()).into()),
         }
     }
 }
@@ -79,10 +79,7 @@ impl Add for Object {
         match (&self, &rhs) {
             (Object::Number(a), Object::Number(b)) => Ok(Object::Number(a + b)),
             (Object::String(a), Object::String(b)) => Ok(Object::String(a.to_owned() + b)),
-            _ => Err(anyhow!(RuntimeErrorType::CannotAddTypes(
-                self.get_type(),
-                rhs.get_type()
-            ))),
+            _ => Err(RuntimeErrorType::CannotAddTypes(self.get_type(), rhs.get_type()).into()),
         }
     }
 }
@@ -93,10 +90,7 @@ impl Sub for Object {
     fn sub(self, rhs: Self) -> Self::Output {
         match (&self, &rhs) {
             (Object::Number(a), Object::Number(b)) => Ok(Object::Number(a - b)),
-            _ => Err(anyhow!(RuntimeErrorType::CannotSubtractTypes(
-                self.get_type(),
-                rhs.get_type()
-            ))),
+            _ => Err(RuntimeErrorType::CannotSubtractTypes(self.get_type(), rhs.get_type()).into()),
         }
     }
 }
@@ -107,10 +101,7 @@ impl Mul for Object {
     fn mul(self, rhs: Self) -> Self::Output {
         match (&self, &rhs) {
             (Object::Number(a), Object::Number(b)) => Ok(Object::Number(a * b)),
-            _ => Err(anyhow!(RuntimeErrorType::CannotMultiplyTypes(
-                self.get_type(),
-                rhs.get_type()
-            ))),
+            _ => Err(RuntimeErrorType::CannotMultiplyTypes(self.get_type(), rhs.get_type()).into()),
         }
     }
 }
@@ -121,10 +112,7 @@ impl Div for Object {
     fn div(self, rhs: Self) -> Self::Output {
         match (&self, &rhs) {
             (Object::Number(a), Object::Number(b)) => Ok(Object::Number(a / b)),
-            _ => Err(anyhow!(RuntimeErrorType::CannotDivideTypes(
-                self.get_type(),
-                rhs.get_type()
-            ))),
+            _ => Err(RuntimeErrorType::CannotDivideTypes(self.get_type(), rhs.get_type()).into()),
         }
     }
 }

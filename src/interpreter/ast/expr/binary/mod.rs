@@ -3,7 +3,8 @@ use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use std::ops::Deref;
 
-pub struct Binary<T> {
+#[derive(Clone)]
+pub struct Binary<T: 'static> {
     left: Box<dyn Expr<T>>,
     operation: Token,
     right: Box<dyn Expr<T>>,
@@ -44,7 +45,7 @@ impl<T> Binary<T> {
     }
 }
 
-impl<T: 'static> Expr<T> for Binary<T> {
+impl<T: 'static + Clone> Expr<T> for Binary<T> {
     fn accept(&self, visitor: &mut dyn ExprVisitor<T>) -> T {
         visitor.visit_binary(self)
     }

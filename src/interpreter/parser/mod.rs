@@ -15,11 +15,11 @@ use crate::interpreter::ast::stmt::print::Print;
 use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
 use crate::interpreter::ast::stmt::while_stmt::While;
 use crate::interpreter::ast::stmt::Stmt;
+use crate::interpreter::error::Result;
 use crate::interpreter::parser::error::{ParserError, ParserErrorType};
 use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
-use anyhow::{anyhow, Result};
 use std::marker::PhantomData;
 
 pub mod error;
@@ -32,7 +32,7 @@ pub struct Parser<T> {
 
 impl<T> Parser<T>
 where
-    T: 'static,
+    T: 'static + Clone,
 {
     pub fn new(tokens: Vec<Token>) -> Self {
         Self {
@@ -61,13 +61,14 @@ where
             return Ok(statements);
         }
 
-        Err(anyhow!(
+        Err(format!(
             "{}",
             error_stack
                 .into_iter()
                 .map(|err| err.to_string())
                 .collect::<String>()
-        ))
+        )
+        .into())
     }
 
     fn declaration(&mut self) -> Result<Box<dyn Stmt<T>>> {
@@ -223,10 +224,7 @@ where
                 return Ok(b!(Assign::new(name, value)));
             }
 
-            return Err(anyhow!(ParserError::new(
-                token,
-                ParserErrorType::InvalidAssignmentTarget
-            )));
+            return Err(ParserError::new(token, ParserErrorType::InvalidAssignmentTarget).into());
         }
 
         Ok(expr)
@@ -347,10 +345,7 @@ where
         )?;
 
         if arguments.len() > 255 {
-            return Err(anyhow!(ParserError::new(
-                paren,
-                ParserErrorType::CountOfArgsGreaterThen255
-            )));
+            return Err(ParserError::new(paren, ParserErrorType::CountOfArgsGreaterThen255).into());
         }
 
         Ok(b!(Call::new(expr, paren, arguments)))
@@ -384,9 +379,9 @@ where
             return Ok(b!(Grouping::new(expr)));
         }
 
-        Err(anyhow!(
-            self.error(self.peek(), ParserErrorType::ExpectedExpression)
-        ))
+        Err(self
+            .error(self.peek(), ParserErrorType::ExpectedExpression)
+            .into())
     }
 
     fn _match(&mut self, types: Vec<TokenType>) -> bool {
@@ -403,7 +398,7 @@ where
         if self.check(ty) {
             return Ok(self.advance());
         }
-        Err(anyhow!(self.error(self.peek(), error_ty)))
+        Err(self.error(self.peek(), error_ty).into())
     }
 
     fn check(&self, ty: TokenType) -> bool {

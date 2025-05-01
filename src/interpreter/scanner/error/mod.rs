@@ -1,8 +1,9 @@
+use crate::interpreter::error::InterpreterError;
 use crate::interpreter::Interpreter;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ScannerError {
     line: usize,
     pos_in_line: usize,
@@ -29,9 +30,13 @@ impl Display for ScannerError {
     }
 }
 
-impl Error for ScannerError {}
+impl Into<InterpreterError> for ScannerError {
+    fn into(self) -> InterpreterError {
+        InterpreterError::ScannerError(self)
+    }
+}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ScannerErrorType {
     UnexpectedCharacter(char),
     UnterminatedString,

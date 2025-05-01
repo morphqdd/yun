@@ -1,10 +1,41 @@
+use crate::interpreter::parser::error::ParserError;
+use crate::interpreter::scanner::error::ScannerError;
 use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::Token;
 use crate::interpreter::Interpreter;
-use std::error::Error;
 use std::fmt::{Display, Formatter};
+use std::num::ParseFloatError;
+use thiserror::Error;
 
-#[derive(Debug)]
+pub type Result<T> = std::result::Result<T, InterpreterError>;
+
+#[derive(Debug, Clone, Error)]
+pub enum InterpreterError {
+    #[error("{0}")]
+    ScannerError(ScannerError),
+    #[error("{0}")]
+    ParserError(ParserError),
+    #[error("{0}")]
+    RuntimeError(RuntimeError),
+    #[error("{0}")]
+    RuntimeErrorType(RuntimeErrorType),
+    #[error("{0}")]
+    Custom(String),
+}
+
+impl Into<InterpreterError> for String {
+    fn into(self) -> InterpreterError {
+        InterpreterError::Custom(self)
+    }
+}
+
+impl Into<InterpreterError> for ParseFloatError {
+    fn into(self) -> InterpreterError {
+        InterpreterError::Custom(self.to_string())
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct RuntimeError {
     token: Token,
     ty: RuntimeErrorType,
@@ -26,7 +57,11 @@ impl Display for RuntimeError {
     }
 }
 
-impl Error for RuntimeError {}
+impl Into<InterpreterError> for RuntimeError {
+    fn into(self) -> InterpreterError {
+        InterpreterError::RuntimeError(self)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum RuntimeErrorType {
@@ -81,4 +116,8 @@ impl Display for RuntimeErrorType {
     }
 }
 
-impl Error for RuntimeErrorType {}
+impl Into<InterpreterError> for RuntimeErrorType {
+    fn into(self) -> InterpreterError {
+        InterpreterError::RuntimeErrorType(self)
+    }
+}

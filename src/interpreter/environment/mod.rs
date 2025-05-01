@@ -1,7 +1,7 @@
+use crate::interpreter::error::Result;
 use crate::interpreter::error::{RuntimeError, RuntimeErrorType};
 use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::Token;
-use anyhow::{anyhow, Result};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -34,10 +34,11 @@ impl Environment {
         if let Some(value) = self.values.get(name.get_lexeme()) {
             return match value {
                 Some(value) => Ok(value.clone()),
-                None => Err(anyhow!(RuntimeError::new(
+                None => Err(RuntimeError::new(
                     name.clone(),
                     RuntimeErrorType::VariableIsNotInit(name.get_lexeme().to_string()),
-                ))),
+                )
+                .into()),
             };
         }
 
@@ -45,10 +46,11 @@ impl Environment {
             return enclosing.borrow().get(name);
         }
 
-        Err(anyhow!(RuntimeError::new(
+        Err(RuntimeError::new(
             name.clone(),
-            RuntimeErrorType::UndefinedVariable(name.get_lexeme().to_string())
-        )))
+            RuntimeErrorType::UndefinedVariable(name.get_lexeme().to_string()),
+        )
+        .into())
     }
 
     pub fn assign(&mut self, name: &Token, value: Object) -> Result<Object> {
@@ -62,9 +64,10 @@ impl Environment {
             return enclosing.borrow_mut().assign(name, value);
         }
 
-        Err(anyhow!(RuntimeError::new(
+        Err(RuntimeError::new(
             name.clone(),
-            RuntimeErrorType::UndefinedVariable(name.get_lexeme().to_string())
-        )))
+            RuntimeErrorType::UndefinedVariable(name.get_lexeme().to_string()),
+        )
+        .into())
     }
 }

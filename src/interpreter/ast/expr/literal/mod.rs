@@ -2,6 +2,7 @@ use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::scanner::token::object::Object;
 use std::fmt::Display;
 
+#[derive(Clone)]
 pub struct Literal {
     value: Option<Object>,
 }

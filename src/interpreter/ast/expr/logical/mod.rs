@@ -2,7 +2,8 @@ use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::scanner::token::Token;
 use std::ops::Deref;
 
-pub struct Logical<T> {
+#[derive(Clone)]
+pub struct Logical<T: 'static> {
     left: Box<dyn Expr<T>>,
     operator: Token,
     right: Box<dyn Expr<T>>,
@@ -30,7 +31,7 @@ impl<T> Logical<T> {
     }
 }
 
-impl<T: 'static> Expr<T> for Logical<T> {
+impl<T: 'static + Clone> Expr<T> for Logical<T> {
     fn accept(&self, visitor: &mut dyn ExprVisitor<T>) -> T {
         visitor.visit_logical(self)
     }

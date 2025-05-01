@@ -2,7 +2,8 @@ use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::scanner::token::Token;
 use std::ops::Deref;
 
-pub struct Call<T> {
+#[derive(Clone)]
+pub struct Call<T: 'static> {
     callable: Box<dyn Expr<T>>,
     parens: Token,
     args: Vec<Box<dyn Expr<T>>>,
@@ -30,7 +31,7 @@ impl<T> Call<T> {
     }
 }
 
-impl<T: 'static> Expr<T> for Call<T> {
+impl<T: 'static + Clone> Expr<T> for Call<T> {
     fn accept(&self, visitor: &mut dyn ExprVisitor<T>) -> T {
         visitor.visit_call(self)
     }

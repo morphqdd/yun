@@ -3,7 +3,8 @@ use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
 use crate::interpreter::scanner::token::Token;
 use std::ops::Deref;
 
-pub struct Let<T> {
+#[derive(Clone)]
+pub struct Let<T: 'static> {
     ident: Token,
     initializer: Option<Box<dyn Expr<T>>>,
 }
@@ -25,8 +26,8 @@ impl<T> Let<T> {
     }
 }
 
-impl<T> Stmt<T> for Let<T> {
-    fn accept(&self, visitor: &mut dyn StmtVisitor<T>) -> T {
+impl<T: 'static + Clone> Stmt<T> for Let<T> {
+    fn accept(self: Box<Let<T>>, visitor: &mut dyn StmtVisitor<T>) -> T {
         visitor.visit_let(self)
     }
 }

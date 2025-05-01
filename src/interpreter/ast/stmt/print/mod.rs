@@ -2,7 +2,8 @@ use crate::interpreter::ast::expr::Expr;
 use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
 use std::ops::Deref;
 
-pub struct Print<T> {
+#[derive(Clone)]
+pub struct Print<T: 'static> {
     expr: Box<dyn Expr<T>>,
 }
 
@@ -16,8 +17,8 @@ impl<T> Print<T> {
     }
 }
 
-impl<T> Stmt<T> for Print<T> {
-    fn accept(&self, visitor: &mut dyn StmtVisitor<T>) -> T {
+impl<T: 'static + Clone> Stmt<T> for Print<T> {
+    fn accept(self: Box<Print<T>>, visitor: &mut dyn StmtVisitor<T>) -> T {
         visitor.visit_print(self)
     }
 }

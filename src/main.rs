@@ -1,6 +1,6 @@
 use crate::cli::Cli;
-use anyhow::Result;
 use clap::Parser;
+use yun_lib::interpreter::error::Result;
 use yun_lib::interpreter::Interpreter;
 
 mod cli;

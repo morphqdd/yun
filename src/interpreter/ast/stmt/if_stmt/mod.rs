@@ -1,8 +1,8 @@
 use crate::interpreter::ast::expr::Expr;
 use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
-use std::ops::Deref;
 
-pub struct If<T> {
+#[derive(Clone)]
+pub struct If<T: 'static> {
     cond: Box<dyn Expr<T>>,
     then_stmt: Box<dyn Stmt<T>>,
     else_stmt: Option<Box<dyn Stmt<T>>>,
@@ -21,21 +21,13 @@ impl<T> If<T> {
         }
     }
 
-    pub fn get_cond(&self) -> &dyn Expr<T> {
-        self.cond.deref()
-    }
-
-    pub fn get_then_stmt(&self) -> &dyn Stmt<T> {
-        self.then_stmt.deref()
-    }
-
-    pub fn get_else_stmt(&self) -> Option<&dyn Stmt<T>> {
-        self.else_stmt.as_deref()
+    pub fn extract(self) -> (Box<dyn Expr<T>>, Box<dyn Stmt<T>>, Option<Box<dyn Stmt<T>>>) {
+        (self.cond, self.then_stmt, self.else_stmt)
     }
 }
 
-impl<T> Stmt<T> for If<T> {
-    fn accept(&self, visitor: &mut dyn StmtVisitor<T>) -> T {
+impl<T: 'static + Clone> Stmt<T> for If<T> {
+    fn accept(self: Box<If<T>>, visitor: &mut dyn StmtVisitor<T>) -> T {
         visitor.visit_if(self)
     }
 }

@@ -1,9 +1,9 @@
+use crate::interpreter::error::InterpreterError;
 use crate::interpreter::scanner::token::Token;
 use crate::interpreter::Interpreter;
-use std::error::Error;
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ParserError {
     token: Token,
     ty: ParserErrorType,
@@ -25,9 +25,13 @@ impl Display for ParserError {
     }
 }
 
-impl Error for ParserError {}
+impl Into<InterpreterError> for ParserError {
+    fn into(self) -> InterpreterError {
+        InterpreterError::ParserError(self)
+    }
+}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ParserErrorType {
     ExpectedMatchingParens,
     ExpectedExpression,
