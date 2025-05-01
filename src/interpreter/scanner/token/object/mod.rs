@@ -34,7 +34,7 @@ impl Object {
         }
     }
 
-    pub fn function(stmt: Box<Fun<Result<Object>>>) -> Self {
+    pub fn function(stmt: Fun<Result<Object>>) -> Self {
         let (name, params, body) = stmt.extract();
         let arity = params.len();
 
@@ -79,7 +79,7 @@ impl Not for Object {
     }
 }
 
-impl<'a> Not for &'a Object {
+impl Not for &Object {
     type Output = Result<Object>;
 
     fn not(self) -> Self::Output {
@@ -177,11 +177,11 @@ impl Display for Object {
     }
 }
 
-impl Into<Result<i32>> for Object {
-    fn into(self) -> Result<i32> {
-        match self {
+impl From<Object> for Result<i32> {
+    fn from(value: Object) -> Self {
+        match value {
             Object::Number(n) => Ok(n as i32),
-            _ => Err(RuntimeErrorType::CantToNum(self.get_type()).into())
+            _ => Err(RuntimeErrorType::CantToNum(value.get_type()).into())
         }
     }
 }

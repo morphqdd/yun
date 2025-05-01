@@ -23,15 +23,15 @@ pub enum InterpreterError {
     Custom(String),
 }
 
-impl Into<InterpreterError> for String {
-    fn into(self) -> InterpreterError {
-        InterpreterError::Custom(self)
+impl From<String> for InterpreterError {
+    fn from(value: String) -> Self {
+        Self::Custom(value)
     }
 }
 
-impl Into<InterpreterError> for ParseFloatError {
-    fn into(self) -> InterpreterError {
-        InterpreterError::Custom(self.to_string())
+impl From<ParseFloatError> for InterpreterError {
+    fn from(value: ParseFloatError) -> Self {
+        Self::Custom(value.to_string())
     }
 }
 
@@ -57,9 +57,9 @@ impl Display for RuntimeError {
     }
 }
 
-impl Into<InterpreterError> for RuntimeError {
-    fn into(self) -> InterpreterError {
-        InterpreterError::RuntimeError(self)
+impl From<RuntimeError> for InterpreterError {
+    fn from(value: RuntimeError) -> Self {
+        Self::RuntimeError(value)
     }
 }
 
@@ -118,8 +118,8 @@ impl Display for RuntimeErrorType {
     }
 }
 
-impl Into<InterpreterError> for RuntimeErrorType {
-    fn into(self) -> InterpreterError {
-        InterpreterError::RuntimeErrorType(self)
+impl From<RuntimeErrorType> for InterpreterError {
+    fn from(value: RuntimeErrorType) -> Self {
+        Self::RuntimeErrorType(value)
     }
 }

@@ -62,14 +62,12 @@ where
             return Ok(statements);
         }
 
-        Err(format!(
-            "{}",
+        Err(
             error_stack
                 .into_iter()
                 .map(|err| err.to_string())
-                .collect::<String>()
+                .collect::<String>().into()
         )
-        .into())
     }
 
     fn declaration(&mut self) -> Result<Box<dyn Stmt<T>>> {
@@ -170,12 +168,11 @@ where
             ParserErrorType::ExpectedLeftParenAfterFor,
         )?;
 
-        let mut initializer: Option<Box<dyn Stmt<T>>> = None;
-        if self._match(vec![TokenType::Let]) {
-            initializer = Some(self.let_declaration()?);
+        let initializer: Option<Box<dyn Stmt<T>>> = if self._match(vec![TokenType::Let]) {
+            Some(self.let_declaration()?)
         } else {
-            initializer = Some(self.expr_statement()?);
-        }
+            Some(self.expr_statement()?)
+        };
 
         let mut condition = None;
         if !self.check(TokenType::Semicolon) {

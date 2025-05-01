@@ -45,7 +45,7 @@ impl ExprVisitor<String> for AstPrinter {
         )
     }
 
-    fn visit_call(&mut self, call: &Call<String>) -> String {
+    fn visit_call(&mut self, _call: &Call<String>) -> String {
         todo!()
     }
 }

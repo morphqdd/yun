@@ -25,12 +25,11 @@ impl Display for ParserError {
     }
 }
 
-impl Into<InterpreterError> for ParserError {
-    fn into(self) -> InterpreterError {
-        InterpreterError::ParserError(self)
+impl From<ParserError> for InterpreterError {
+    fn from(value: ParserError) -> Self {
+        Self::ParserError(value)
     }
 }
-
 #[derive(Debug, Clone)]
 pub enum ParserErrorType {
     ExpectedMatchingParens,

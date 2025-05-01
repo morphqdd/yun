@@ -35,7 +35,7 @@ use crate::interpreter::shell::Shell;
 use crate::rc;
 use std::cell::RefCell;
 use std::io::Write;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref};
 use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
@@ -435,7 +435,7 @@ impl StmtVisitor<Result<Object>> for Interpreter {
 
     fn visit_fun(&mut self, stmt: Box<Fun<Result<Object>>>) -> Result<Object> {
         let name = stmt.get_name();
-        let func = Object::function(stmt);
+        let func = Object::function(*stmt);
 
         match &self.env {
             None => {

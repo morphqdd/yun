@@ -30,9 +30,9 @@ impl Display for ScannerError {
     }
 }
 
-impl Into<InterpreterError> for ScannerError {
-    fn into(self) -> InterpreterError {
-        InterpreterError::ScannerError(self)
+impl From<ScannerError> for InterpreterError {
+    fn from(value: ScannerError) -> Self {
+        InterpreterError::ScannerError(value)
     }
 }
 

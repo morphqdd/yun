@@ -4,16 +4,18 @@ use crate::interpreter::Interpreter;
 use std::fmt::{Debug, Display, Formatter};
 use std::rc::Rc;
 
+type CallFn = Rc<dyn Fn(&mut Interpreter, Vec<Object>) -> Result<Object>>;
+
 #[derive(Clone)]
 pub struct Callable {
-    call: Rc<dyn Fn(&mut Interpreter, Vec<Object>) -> Result<Object>>,
+    call: CallFn,
     arity: Rc<dyn Fn() -> usize>,
     to_string: Rc<dyn Fn() -> String>,
 }
 
 impl Callable {
     pub fn new(
-        call: Rc<dyn Fn(&mut Interpreter, Vec<Object>) -> Result<Object>>,
+        call: CallFn,
         arity: Rc<dyn Fn() -> usize>,
         to_string: Rc<dyn Fn() -> String>,
     ) -> Self {

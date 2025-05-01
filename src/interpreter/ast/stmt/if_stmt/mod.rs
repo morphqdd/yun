@@ -1,6 +1,8 @@
 use crate::interpreter::ast::expr::Expr;
 use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
 
+type ExtractedIf<T> = (Box<dyn Expr<T>>, Box<dyn Stmt<T>>, Option<Box<dyn Stmt<T>>>);
+
 #[derive(Clone)]
 pub struct If<T: 'static> {
     cond: Box<dyn Expr<T>>,
@@ -21,7 +23,7 @@ impl<T> If<T> {
         }
     }
 
-    pub fn extract(self) -> (Box<dyn Expr<T>>, Box<dyn Stmt<T>>, Option<Box<dyn Stmt<T>>>) {
+    pub fn extract(self) -> ExtractedIf<T> {
         (self.cond, self.then_stmt, self.else_stmt)
     }
 }
