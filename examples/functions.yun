@@ -9,4 +9,5 @@ fun greet(name) {
 }
 
 
-print greet("Gregory");
+let a = greet("Gregory");
+print a == nil;

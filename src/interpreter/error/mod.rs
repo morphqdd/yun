@@ -6,6 +6,7 @@ use crate::interpreter::Interpreter;
 use std::fmt::{Display, Formatter};
 use std::num::ParseFloatError;
 use thiserror::Error;
+use crate::interpreter::ast::stmt::return_stmt::Return;
 
 pub type Result<T> = std::result::Result<T, InterpreterError>;
 
@@ -21,6 +22,8 @@ pub enum InterpreterError {
     RuntimeErrorType(RuntimeErrorType),
     #[error("{0}")]
     Custom(String),
+    #[error("{0}")]
+    Return(Object)
 }
 
 impl From<String> for InterpreterError {

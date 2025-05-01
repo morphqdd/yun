@@ -22,6 +22,7 @@ use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use std::marker::PhantomData;
+use crate::interpreter::ast::stmt::return_stmt::Return;
 
 pub mod error;
 
@@ -159,7 +160,22 @@ where
             return self.for_statement();
         }
 
+        if self._match(vec![TokenType::Return]) {
+            return self.return_statement();
+        }
+
         self.expr_statement()
+    }
+
+    fn return_statement(&mut self) -> Result<Box<dyn Stmt<T>>> {
+        let token = self.previous();
+        let expr = if !self.check(TokenType::Semicolon) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        self.consume(TokenType::Semicolon, ParserErrorType::ExpectedSemicolon)?;
+        Ok(b!(Return::new(token, expr)))
     }
 
     fn for_statement(&mut self) -> Result<Box<dyn Stmt<T>>> {

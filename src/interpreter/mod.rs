@@ -40,6 +40,7 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
 use std::{fs, io};
+use crate::interpreter::ast::stmt::return_stmt::Return;
 
 pub struct Interpreter {
     env: Option<Rc<RefCell<Environment>>>,
@@ -366,7 +367,7 @@ impl StmtVisitor<Result<Object>> for Interpreter {
     fn visit_print(&mut self, stmt: Box<Print<Result<Object>>>) -> Result<Object> {
         let value = self.evaluate(stmt.expr())?;
         println!("{}", value);
-        Ok(Object::Void)
+        Ok(Object::Nil)
     }
 
     fn visit_let(&mut self, stmt: Box<Let<Result<Object>>>) -> Result<Object> {
@@ -401,7 +402,7 @@ impl StmtVisitor<Result<Object>> for Interpreter {
                 }
             },
         }
-        Ok(Object::Void)
+        Ok(Object::Nil)
     }
 
     fn visit_block(&mut self, stmt: Box<Block<Result<Object>>>) -> Result<Object> {
@@ -409,7 +410,7 @@ impl StmtVisitor<Result<Object>> for Interpreter {
             stmt.extract(),
             Rc::new(RefCell::new(Environment::new(self.env.clone()))),
         )?;
-        Ok(Object::Void)
+        Ok(Object::Nil)
     }
 
     fn visit_if(&mut self, stmt: Box<If<Result<Object>>>) -> Result<Object> {
@@ -420,7 +421,7 @@ impl StmtVisitor<Result<Object>> for Interpreter {
             self.execute(else_stmt)?;
         }
 
-        Ok(Object::Void)
+        Ok(Object::Nil)
     }
 
     fn visit_while(&mut self, stmt: Box<While<Result<Object>>>) -> Result<Object> {
@@ -430,7 +431,7 @@ impl StmtVisitor<Result<Object>> for Interpreter {
             self.execute(stmt.clone())?;
             evaluated_cond = self.evaluate(cond.deref())?;
         }
-        Ok(Object::Void)
+        Ok(Object::Nil)
     }
 
     fn visit_fun(&mut self, stmt: Box<Fun<Result<Object>>>) -> Result<Object> {
@@ -448,6 +449,15 @@ impl StmtVisitor<Result<Object>> for Interpreter {
             }
         }
 
-        Ok(Object::Void)
+        Ok(Object::Nil)
+    }
+
+    fn visit_return(&mut self, stmt: Box<Return<Result<Object>>>) -> Result<Object> {
+        let (_, expr) = stmt.extract();
+        if let Some(expr) = expr {
+            Err(self.evaluate(expr.deref())?.into())
+        } else{
+            Err(Object::Nil.into())
+        }
     }
 }

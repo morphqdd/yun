@@ -1,6 +1,6 @@
 use crate::interpreter::ast::stmt::fun_stmt::Fun;
 use crate::interpreter::environment::Environment;
-use crate::interpreter::error::Result;
+use crate::interpreter::error::{InterpreterError, Result};
 use crate::interpreter::error::RuntimeErrorType;
 use crate::interpreter::scanner::token::object::callable::Callable;
 use crate::rc;
@@ -45,7 +45,13 @@ impl Object {
                 for i in 0..arity {
                     env.define(params[i].get_lexeme(), Some(args[i].clone()));
                 }
-                interpreter.execute_block(body, Rc::new(RefCell::new(env)))
+                match interpreter.execute_block(body, Rc::new(RefCell::new(env))) {
+                    Ok(value) => Ok(value),
+                    Err(err) => match err {
+                        InterpreterError::Return(value) => Ok(value),
+                        _ => Err(err),
+                    }
+                }
             }),
             rc!(move || arity),
             rc!(move || name.get_lexeme().into()),
@@ -183,5 +189,11 @@ impl From<Object> for Result<i32> {
             Object::Number(n) => Ok(n as i32),
             _ => Err(RuntimeErrorType::CantToNum(value.get_type()).into())
         }
+    }
+}
+
+impl From<Object> for InterpreterError {
+    fn from(value: Object) -> Self {
+       InterpreterError::Return(value)
     }
 }
