@@ -1,5 +1,12 @@
 fun greet(name) {
     print "Hello, " + name;
+
+    fun bye() {
+        print "Bye, " + name;
+    }
+
+    bye();
 }
 
 greet("Gregory");
+print greet;
