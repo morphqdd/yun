@@ -9,6 +9,7 @@ use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
 use crate::interpreter::ast::expr::Expr;
 use crate::interpreter::ast::stmt::block::Block;
+use crate::interpreter::ast::stmt::fun_stmt::Fun;
 use crate::interpreter::ast::stmt::if_stmt::If;
 use crate::interpreter::ast::stmt::let_stmt::Let;
 use crate::interpreter::ast::stmt::print::Print;
@@ -75,7 +76,53 @@ where
         if self._match(vec![TokenType::Let]) {
             return self.let_declaration();
         }
+
+        if self._match(vec![TokenType::Fun]) {
+            return self.fun_declaration();
+        }
+
         self.statement()
+    }
+
+    fn fun_declaration(&mut self) -> Result<Box<dyn Stmt<T>>> {
+        let name = self.consume(
+            TokenType::Identifier,
+            ParserErrorType::ExpectedIdentAfterFunDecl,
+        )?;
+
+        self.consume(
+            TokenType::LeftParen,
+            ParserErrorType::ExpectedLeftParenAfterFunIdent,
+        )?;
+
+        let mut params = vec![];
+
+        if !self.check(TokenType::RightParen) {
+            params.push(self.consume(TokenType::Identifier, ParserErrorType::ExpectedParamName)?);
+            while self.check(TokenType::Comma) {
+                if params.len() >= 255 {
+                    return Err(ParserError::new(
+                        self.peek(),
+                        ParserErrorType::CountOfParamsGreaterThen255,
+                    )
+                    .into());
+                }
+                params
+                    .push(self.consume(TokenType::Identifier, ParserErrorType::ExpectedParamName)?);
+            }
+        }
+
+        self.consume(
+            TokenType::RightParen,
+            ParserErrorType::ExpectedRightParenAfterParams,
+        )?;
+        self.consume(
+            TokenType::LeftBrace,
+            ParserErrorType::ExpectedLeftBraceBeforeBody,
+        )?;
+
+        let body = self.block_statement()?;
+        Ok(b!(Fun::new(name, params, body)))
     }
 
     fn let_declaration(&mut self) -> Result<Box<dyn Stmt<T>>> {

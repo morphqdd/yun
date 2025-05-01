@@ -43,7 +43,7 @@ impl Environment {
         }
 
         if let Some(enclosing) = self.enclosing.clone() {
-            return enclosing.borrow().get(name);
+            return enclosing.clone().borrow().get(name);
         }
 
         Err(RuntimeError::new(

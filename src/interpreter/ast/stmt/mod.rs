@@ -1,4 +1,5 @@
 use crate::interpreter::ast::stmt::block::Block;
+use crate::interpreter::ast::stmt::fun_stmt::Fun;
 use crate::interpreter::ast::stmt::if_stmt::If;
 use crate::interpreter::ast::stmt::let_stmt::Let;
 use crate::interpreter::ast::stmt::print::Print;
@@ -6,7 +7,7 @@ use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
 use crate::interpreter::ast::stmt::while_stmt::While;
 
 pub mod block;
-mod fun_stmt;
+pub mod fun_stmt;
 pub mod if_stmt;
 pub mod let_stmt;
 pub mod print;
@@ -20,6 +21,7 @@ pub trait StmtVisitor<T> {
     fn visit_block(&mut self, stmt: Box<Block<T>>) -> T;
     fn visit_if(&mut self, stmt: Box<If<T>>) -> T;
     fn visit_while(&mut self, stmt: Box<While<T>>) -> T;
+    fn visit_fun(&mut self, stmt: Box<Fun<T>>) -> T;
 }
 
 pub trait CloneStmt<T> {

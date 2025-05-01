@@ -1,19 +1,23 @@
+use crate::interpreter::ast::stmt::fun_stmt::Fun;
+use crate::interpreter::environment::Environment;
 use crate::interpreter::error::Result;
 use crate::interpreter::error::RuntimeErrorType;
-use crate::interpreter::Interpreter;
+use crate::interpreter::scanner::token::object::callable::Callable;
+use crate::rc;
+use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::fmt::Display;
 use std::ops::{Add, Div, Mul, Neg, Not, Sub};
+use std::rc::Rc;
+
+pub mod callable;
 
 #[derive(Debug, Clone)]
 pub enum Object {
     String(String),
     Number(f64),
     Bool(bool),
-    Callable {
-        call: fn(interpreter: &mut Interpreter, arguments: Vec<Object>) -> Result<Object>,
-        arity: fn() -> usize,
-    },
+    Callable(Callable),
     Nil,
     Void,
 }
@@ -28,6 +32,24 @@ impl Object {
             Object::Void => "void".into(),
             Object::Callable { .. } => "<callable>".into(),
         }
+    }
+
+    pub fn function(stmt: Box<Fun<Result<Object>>>) -> Self {
+        let (name, params, body) = stmt.extract();
+        let arity = params.len();
+
+        Self::Callable(Callable::new(
+            rc!(move |interpreter, args| {
+                let body = body.clone();
+                let mut env = Environment::new(interpreter.get_globals());
+                for i in 0..arity {
+                    env.define(params[i].get_lexeme(), Some(args[i].clone()));
+                }
+                interpreter.execute_block(body, Rc::new(RefCell::new(env)))
+            }),
+            rc!(move || arity),
+            rc!(move || name.get_lexeme().into()),
+        ))
     }
 }
 
@@ -150,7 +172,7 @@ impl Display for Object {
             Object::Bool(b) => write!(f, "{}", b),
             Object::Nil => write!(f, "nil"),
             Object::Void => write!(f, ""),
-            Object::Callable { call, arity } => write!(f, "<callable> {:?} {:?}", call, arity),
+            Object::Callable(callable) => write!(f, "{}", callable),
         }
     }
 }

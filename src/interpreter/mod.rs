@@ -15,6 +15,7 @@ use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::ast::stmt::block::Block;
+use crate::interpreter::ast::stmt::fun_stmt::Fun;
 use crate::interpreter::ast::stmt::if_stmt::If;
 use crate::interpreter::ast::stmt::let_stmt::Let;
 use crate::interpreter::ast::stmt::print::Print;
@@ -25,11 +26,13 @@ use crate::interpreter::environment::Environment;
 use crate::interpreter::error::Result;
 use crate::interpreter::error::{InterpreterError, RuntimeError, RuntimeErrorType};
 use crate::interpreter::parser::Parser;
+use crate::interpreter::scanner::token::object::callable::Callable;
 use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use crate::interpreter::scanner::Scanner;
 use crate::interpreter::shell::Shell;
+use crate::rc;
 use std::cell::RefCell;
 use std::io::Write;
 use std::ops::{Deref, DerefMut};
@@ -47,33 +50,36 @@ impl Default for Interpreter {
         let mut env = Environment::default();
         env.define(
             "clock",
-            Some(Object::Callable {
-                call: |_interpreter, _arguments| -> Result<Object> {
+            Some(Object::Callable(Callable::new(
+                rc!(|_, _| -> Result<Object> {
                     Ok(Object::Number(
                         std::time::SystemTime::now()
                             .duration_since(std::time::SystemTime::UNIX_EPOCH)
                             .unwrap()
                             .as_micros() as f64,
                     ))
-                },
-                arity: || 0,
-            }),
+                }),
+                rc!(|| 0),
+                rc!(|| "<native function clock>".into()),
+            ))),
         );
 
         env.define(
             "panic",
-            Some(Object::Callable {
-                call: |_, args| Err(RuntimeErrorType::UserPanicWithMsg(args[0].clone()).into()),
-                arity: || 1,
-            }),
+            Some(Object::Callable(Callable::new(
+                rc!(|_, args| Err(RuntimeErrorType::UserPanicWithMsg(args[0].clone()).into())),
+                rc!(|| 1),
+                rc!(|| "<native function panic>".into()),
+            ))),
         );
 
         env.define(
             "string",
-            Some(Object::Callable {
-                call: |_, args| Ok(Object::String(args[0].clone().to_string())),
-                arity: || 1,
-            }),
+            Some(Object::Callable(Callable::new(
+                rc!(|_, args| Ok(Object::String(args[0].clone().to_string()))),
+                rc!(|| 1),
+                rc!(|| "<native function string>".into()),
+            ))),
         );
 
         Self {
@@ -125,6 +131,10 @@ impl Interpreter {
         let res = self.interpret(ast)?;
 
         Ok(res)
+    }
+
+    fn get_globals(&self) -> Option<Rc<RefCell<Environment>>> {
+        self.env.clone()
     }
 
     fn interpret(&mut self, statements: Vec<Box<dyn Stmt<Result<Object>>>>) -> Result<Object> {
@@ -315,15 +325,15 @@ impl ExprVisitor<Result<Object>> for Interpreter {
         }
 
         match callable {
-            Object::Callable { call, arity } => {
-                if args.len() != arity() {
+            Object::Callable(callable) => {
+                if args.len() != callable.arity() {
                     return Err(RuntimeError::new(
                         call_.get_token(),
                         RuntimeErrorType::ArityOfFuncNotEqSizeOfArgs,
                     )
                     .into());
                 }
-                Interpreter::handle_runtime_error(call_.get_token(), call(self, args))
+                Interpreter::handle_runtime_error(call_.get_token(), callable.call(self, args))
             }
             _ => Err(RuntimeError::new(call_.get_token(), RuntimeErrorType::NotCallable).into()),
         }
@@ -402,6 +412,24 @@ impl StmtVisitor<Result<Object>> for Interpreter {
             self.execute(stmt.clone())?;
             evaluated_cond = self.evaluate(cond.deref())?;
         }
+        Ok(Object::Void)
+    }
+
+    fn visit_fun(&mut self, stmt: Box<Fun<Result<Object>>>) -> Result<Object> {
+        let name = stmt.get_name();
+        let func = Object::function(stmt);
+
+        match &self.env {
+            None => {
+                return Err(
+                    RuntimeError::new(name, RuntimeErrorType::BugEnvironmentNotInit).into(),
+                );
+            }
+            Some(env) => {
+                env.borrow_mut().define(name.get_lexeme(), Some(func));
+            }
+        }
+
         Ok(Object::Void)
     }
 }

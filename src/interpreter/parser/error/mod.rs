@@ -49,6 +49,12 @@ pub enum ParserErrorType {
     ExpectedRightParenAfterWhileStatement,
     ExpectedRightParenAfterArguments,
     CountOfArgsGreaterThen255,
+    ExpectedIdentAfterFunDecl,
+    ExpectedLeftParenAfterFunIdent,
+    CountOfParamsGreaterThen255,
+    ExpectedRightParenAfterParams,
+    ExpectedLeftBraceBeforeBody,
+    ExpectedParamName,
 }
 
 impl Display for ParserErrorType {
@@ -82,6 +88,20 @@ impl Display for ParserErrorType {
             ParserErrorType::CountOfArgsGreaterThen255 => {
                 write!(f, "Number of arguments greater than 255!")
             }
+            ParserErrorType::ExpectedIdentAfterFunDecl => {
+                write!(f, "Expected identifier after function declaration!")
+            }
+            ParserErrorType::ExpectedLeftParenAfterFunIdent => {
+                write!(f, "Expected '(' after function identifier!")
+            }
+            ParserErrorType::CountOfParamsGreaterThen255 => {
+                write!(f, "Number of params greater than 255!")
+            }
+            ParserErrorType::ExpectedRightParenAfterParams => {
+                write!(f, "Expected ')' after parameters!")
+            }
+            ParserErrorType::ExpectedLeftBraceBeforeBody => write!(f, "Expected '{{' after body!"),
+            ParserErrorType::ExpectedParamName => write!(f, "Expected parameter name!"),
         }
     }
 }

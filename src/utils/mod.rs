@@ -4,3 +4,10 @@ macro_rules! b {
         Box::new($e)
     };
 }
+
+#[macro_export]
+macro_rules! rc {
+    ($e: expr) => {
+        Rc::new($e)
+    };
+}
