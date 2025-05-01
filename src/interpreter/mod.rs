@@ -44,12 +44,13 @@ use crate::interpreter::ast::stmt::return_stmt::Return;
 
 pub struct Interpreter {
     env: Option<Rc<RefCell<Environment>>>,
+    globals: Option<Rc<RefCell<Environment>>>,
 }
 
 impl Default for Interpreter {
     fn default() -> Self {
-        let mut env = Environment::default();
-        env.define(
+        let mut globals = Environment::default();
+        globals.define(
             "clock",
             Some(Object::Callable(Callable::new(
                 rc!(|_, _| -> Result<Object> {
@@ -65,7 +66,7 @@ impl Default for Interpreter {
             ))),
         );
 
-        env.define(
+        globals.define(
             "panic",
             Some(Object::Callable(Callable::new(
                 rc!(|_, args| Err(RuntimeErrorType::UserPanicWithMsg(args[0].clone()).into())),
@@ -74,7 +75,7 @@ impl Default for Interpreter {
             ))),
         );
 
-        env.define(
+        globals.define(
             "string",
             Some(Object::Callable(Callable::new(
                 rc!(|_, args| Ok(Object::String(args[0].clone().to_string()))),
@@ -83,7 +84,7 @@ impl Default for Interpreter {
             ))),
         );
 
-        env.define(
+        globals.define(
             "exit",
             Some(Object::Callable(Callable::new(
                 rc!(|_, _| exit(0)),
@@ -92,7 +93,7 @@ impl Default for Interpreter {
             ))),
         );
 
-        env.define(
+        globals.define(
             "exit_with_code",
             Some(Object::Callable(Callable::new(
                 rc!(|_, args| exit(Into::<Result<i32>>::into(args[0].clone())?)),
@@ -101,8 +102,11 @@ impl Default for Interpreter {
             ))),
         );
 
+        let globals = Rc::new(RefCell::new(globals));
+
         Self {
-            env: Some(Rc::new(RefCell::new(env))),
+            env: Some(globals.clone()),
+            globals: Some(globals),
         }
     }
 }
@@ -153,7 +157,7 @@ impl Interpreter {
     }
 
     fn get_globals(&self) -> Option<Rc<RefCell<Environment>>> {
-        self.env.clone()
+        self.globals.clone()
     }
 
     fn interpret(&mut self, statements: Vec<Box<dyn Stmt<Result<Object>>>>) -> Result<Object> {
@@ -436,7 +440,7 @@ impl StmtVisitor<Result<Object>> for Interpreter {
 
     fn visit_fun(&mut self, stmt: Box<Fun<Result<Object>>>) -> Result<Object> {
         let name = stmt.get_name();
-        let func = Object::function(*stmt);
+        let func = Object::function(*stmt, self.env.clone());
 
         match &self.env {
             None => {

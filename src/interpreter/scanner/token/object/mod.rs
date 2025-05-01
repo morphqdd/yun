@@ -34,14 +34,14 @@ impl Object {
         }
     }
 
-    pub fn function(stmt: Fun<Result<Object>>) -> Self {
+    pub fn function(stmt: Fun<Result<Object>>, closure: Option<Rc<RefCell<Environment>>>) -> Self {
         let (name, params, body) = stmt.extract();
         let arity = params.len();
 
         Self::Callable(Callable::new(
             rc!(move |interpreter, args| {
                 let body = body.clone();
-                let mut env = Environment::new(interpreter.get_globals());
+                let mut env = Environment::new(closure.clone());
                 for i in 0..arity {
                     env.define(params[i].get_lexeme(), Some(args[i].clone()));
                 }

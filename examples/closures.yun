@@ -1,0 +1,10 @@
+fun outer(name) {
+    fun inner() {
+        print "Hello, " + name + " from inner";
+    }
+
+    return inner;
+}
+
+let inner = outer("Morphq");
+inner();
