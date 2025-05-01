@@ -78,6 +78,7 @@ pub enum RuntimeErrorType {
     ArityOfFuncNotEqSizeOfArgs,
     NotCallable,
     UserPanicWithMsg(Object),
+    CantToNum(String),
 }
 
 impl Display for RuntimeErrorType {
@@ -112,6 +113,7 @@ impl Display for RuntimeErrorType {
             }
             RuntimeErrorType::NotCallable => write!(f, "Not callable"),
             RuntimeErrorType::UserPanicWithMsg(msg) => write!(f, "Panic!: {}", msg),
+            RuntimeErrorType::CantToNum(ty) => write!(f, "this type '{}' cannot be represented as a number", ty),
         }
     }
 }

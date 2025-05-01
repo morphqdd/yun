@@ -82,6 +82,24 @@ impl Default for Interpreter {
             ))),
         );
 
+        env.define(
+            "exit",
+            Some(Object::Callable(Callable::new(
+                rc!(|_, _| exit(0)),
+                rc!(|| 0),
+                rc!(|| "<native function exit>".into()),
+            ))),
+        );
+
+        env.define(
+            "exit_with_code",
+            Some(Object::Callable(Callable::new(
+                rc!(|_, args| exit(Into::<Result<i32>>::into(args[0].clone())?)),
+                rc!(|| 1),
+                rc!(|| "<native function exit>".into()),
+            ))),
+        );
+
         Self {
             env: Some(Rc::new(RefCell::new(env))),
         }

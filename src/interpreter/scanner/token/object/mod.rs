@@ -176,3 +176,12 @@ impl Display for Object {
         }
     }
 }
+
+impl Into<Result<i32>> for Object {
+    fn into(self) -> Result<i32> {
+        match self {
+            Object::Number(n) => Ok(n as i32),
+            _ => Err(RuntimeErrorType::CantToNum(self.get_type()).into())
+        }
+    }
+}

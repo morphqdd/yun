@@ -8,5 +8,5 @@ fun greet(name) {
     bye();
 }
 
-greet("Gregory");
-print greet;
+
+print greet("Gregory");
