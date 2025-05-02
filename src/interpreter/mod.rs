@@ -13,7 +13,7 @@ use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::logical::Logical;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
-use crate::interpreter::ast::expr::{Expr, ExprVisitor};
+use crate::interpreter::ast::expr::{CloneExpr, Expr, ExprVisitor};
 use crate::interpreter::ast::stmt::block::Block;
 use crate::interpreter::ast::stmt::fun_stmt::Fun;
 use crate::interpreter::ast::stmt::if_stmt::If;
@@ -40,73 +40,77 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
 use std::{fs, io};
+use std::collections::HashMap;
 use crate::interpreter::ast::stmt::return_stmt::Return;
+use crate::interpreter::parser::resolver::Resolver;
 
 pub struct Interpreter {
     env: Option<Rc<RefCell<Environment>>>,
     globals: Option<Rc<RefCell<Environment>>>,
+    locals: HashMap<u64, usize>
 }
 
 impl Default for Interpreter {
     fn default() -> Self {
         let mut globals = Environment::default();
-        globals.define(
-            "clock",
-            Some(Object::Callable(Callable::new(
-                rc!(|_, _| -> Result<Object> {
-                    Ok(Object::Number(
-                        std::time::SystemTime::now()
-                            .duration_since(std::time::SystemTime::UNIX_EPOCH)
-                            .unwrap()
-                            .as_micros() as f64,
-                    ))
-                }),
-                rc!(|| 0),
-                rc!(|| "<native function clock>".into()),
-            ))),
-        );
-
-        globals.define(
-            "panic",
-            Some(Object::Callable(Callable::new(
-                rc!(|_, args| Err(RuntimeErrorType::UserPanicWithMsg(args[0].clone()).into())),
-                rc!(|| 1),
-                rc!(|| "<native function panic>".into()),
-            ))),
-        );
-
-        globals.define(
-            "string",
-            Some(Object::Callable(Callable::new(
-                rc!(|_, args| Ok(Object::String(args[0].clone().to_string()))),
-                rc!(|| 1),
-                rc!(|| "<native function string>".into()),
-            ))),
-        );
-
-        globals.define(
-            "exit",
-            Some(Object::Callable(Callable::new(
-                rc!(|_, _| exit(0)),
-                rc!(|| 0),
-                rc!(|| "<native function exit>".into()),
-            ))),
-        );
-
-        globals.define(
-            "exit_with_code",
-            Some(Object::Callable(Callable::new(
-                rc!(|_, args| exit(Into::<Result<i32>>::into(args[0].clone())?)),
-                rc!(|| 1),
-                rc!(|| "<native function exit>".into()),
-            ))),
-        );
+        // globals.define(
+        //     "clock",
+        //     Some(Object::Callable(Callable::new(
+        //         rc!(|_, _| -> Result<Object> {
+        //             Ok(Object::Number(
+        //                 std::time::SystemTime::now()
+        //                     .duration_since(std::time::SystemTime::UNIX_EPOCH)
+        //                     .unwrap()
+        //                     .as_micros() as f64,
+        //             ))
+        //         }),
+        //         rc!(|| 0),
+        //         rc!(|| "<native function clock>".into()),
+        //     ))),
+        // );
+        //
+        // globals.define(
+        //     "panic",
+        //     Some(Object::Callable(Callable::new(
+        //         rc!(|_, args| Err(RuntimeErrorType::UserPanicWithMsg(args[0].clone()).into())),
+        //         rc!(|| 1),
+        //         rc!(|| "<native function panic>".into()),
+        //     ))),
+        // );
+        //
+        // globals.define(
+        //     "string",
+        //     Some(Object::Callable(Callable::new(
+        //         rc!(|_, args| Ok(Object::String(args[0].clone().to_string()))),
+        //         rc!(|| 1),
+        //         rc!(|| "<native function string>".into()),
+        //     ))),
+        // );
+        //
+        // globals.define(
+        //     "exit",
+        //     Some(Object::Callable(Callable::new(
+        //         rc!(|_, _| exit(0)),
+        //         rc!(|| 0),
+        //         rc!(|| "<native function exit>".into()),
+        //     ))),
+        // );
+        //
+        // globals.define(
+        //     "exit_with_code",
+        //     Some(Object::Callable(Callable::new(
+        //         rc!(|_, args| exit(Into::<Result<i32>>::into(args[0].clone())?)),
+        //         rc!(|| 1),
+        //         rc!(|| "<native function exit>".into()),
+        //     ))),
+        // );
 
         let globals = Rc::new(RefCell::new(globals));
 
         Self {
             env: Some(globals.clone()),
             globals: Some(globals),
+            locals: Default::default(),
         }
     }
 }
@@ -150,14 +154,12 @@ impl Interpreter {
 
         let mut parser = Parser::new(tokens);
         let ast = parser.parse()?;
-
+        
+        Resolver::new(self).resolve(ast.iter().map(AsRef::as_ref).collect())?;
+        
         let res = self.interpret(ast)?;
 
         Ok(res)
-    }
-
-    fn get_globals(&self) -> Option<Rc<RefCell<Environment>>> {
-        self.globals.clone()
     }
 
     fn interpret(&mut self, statements: Vec<Box<dyn Stmt<Result<Object>>>>) -> Result<Object> {
@@ -192,6 +194,26 @@ impl Interpreter {
     #[inline]
     fn evaluate(&mut self, expr: &dyn Expr<Result<Object>>) -> Result<Object> {
         expr.accept(self)
+    }
+
+    #[inline]
+    pub fn resolve(&mut self, expr: Box<dyn Expr<Result<Object>>>, depth: usize) {
+        self.locals.insert(expr.id(), depth);
+    }
+
+    fn look_up_variable(&mut self, name: Token, var: &dyn Expr<Result<Object>>) -> Result<Object> {
+        println!("Looking up variable {:?}", name);
+        println!("Locals: {:?}", self.locals);
+        println!("Env: {:?}", self.env);
+        println!("Id: {}", var.id());
+        if let Some(distance) = self.locals.get(&var.id()) {
+            Environment::get_at(self.env.clone(), *distance, &name)
+        } else {
+            if let Some(globals) = self.globals.clone() {
+                return globals.borrow().get(&name);
+            }
+            Err(RuntimeError::new(name, RuntimeErrorType::BugEnvironmentNotInit).into())
+        }
     }
 
     #[inline]
@@ -309,22 +331,20 @@ impl ExprVisitor<Result<Object>> for Interpreter {
     }
 
     fn visit_variable(&mut self, variable: &Variable) -> Result<Object> {
-        if let Some(env) = &self.env {
-            return env.borrow().get(&variable.get_token());
-        }
-        Err(RuntimeError::new(
-            variable.get_token(),
-            RuntimeErrorType::BugEnvironmentNotInit,
-        )
-        .into())
+        self.look_up_variable(variable.get_token(), variable)
     }
 
     fn visit_assign(&mut self, assign: &Assign<Result<Object>>) -> Result<Object> {
         let value = self.evaluate(assign.get_value())?;
-        if let Some(env) = &self.env {
-            return env.borrow_mut().assign(&assign.get_token(), value.clone());
+        let name = assign.get_token();
+        if let Some(distance) = self.locals.get(&assign.clone_expr().id()) {
+            Environment::assign_at(self.env.clone(), *distance, &name, value)
+        } else {
+            if let Some(globals) = self.globals.clone() {
+                return globals.borrow().get(&name);
+            }
+            Err(RuntimeError::new(name, RuntimeErrorType::BugEnvironmentNotInit).into())
         }
-        Err(RuntimeError::new(assign.get_token(), RuntimeErrorType::BugEnvironmentNotInit).into())
     }
 
     fn visit_logical(&mut self, logical: &Logical<Result<Object>>) -> Result<Object> {
@@ -419,7 +439,7 @@ impl StmtVisitor<Result<Object>> for Interpreter {
 
     fn visit_if(&mut self, stmt: &If<Result<Object>>) -> Result<Object> {
         let (cond, then, else_) = stmt.extract();
-        if self.evaluate(cond.deref())? == Object::Bool(true) {
+        if self.evaluate(cond)? == Object::Bool(true) {
             self.execute(then)?;
         } else if let Some(else_stmt) = else_ {
             self.execute(else_stmt)?;
@@ -430,10 +450,10 @@ impl StmtVisitor<Result<Object>> for Interpreter {
 
     fn visit_while(&mut self, stmt: &While<Result<Object>>) -> Result<Object> {
         let (cond, stmt) = stmt.extract();
-        let mut evaluated_cond = self.evaluate(cond.deref())?;
+        let mut evaluated_cond = self.evaluate(cond)?;
         while self.is_truly(&evaluated_cond)? {
-            self.execute(stmt.clone())?;
-            evaluated_cond = self.evaluate(cond.deref())?;
+            self.execute(stmt)?;
+            evaluated_cond = self.evaluate(cond)?;
         }
         Ok(Object::Nil)
     }
@@ -459,7 +479,7 @@ impl StmtVisitor<Result<Object>> for Interpreter {
     fn visit_return(&mut self, stmt: &Return<Result<Object>>) -> Result<Object> {
         let (_, expr) = stmt.extract();
         if let Some(expr) = expr {
-            Err(self.evaluate(expr.deref())?.into())
+            Err(self.evaluate(expr)?.into())
         } else{
             Err(Object::Nil.into())
         }

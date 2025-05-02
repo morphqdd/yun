@@ -53,6 +53,23 @@ impl Environment {
         .into())
     }
 
+    pub fn get_at(env: Option<Rc<RefCell<Self>>>, distance: usize, name: &Token) -> Result<Object> {
+        if let Some(environment) = Environment::ancestor(env, distance) {
+            return environment.borrow().get(name);
+        }
+        Err(RuntimeError::new(name.clone(), RuntimeErrorType::BugEnvironmentNotInit).into())
+    }
+
+    fn ancestor(env: Option<Rc<RefCell<Self>>>, distance: usize) -> Option<Rc<RefCell<Environment>>> {
+        let mut env = env.clone();
+        for _ in 0..distance {
+            if let Some(env_) = env.clone() {
+                env = env_.borrow().enclosing.clone();
+            }
+        }
+        env
+    }
+
     pub fn assign(&mut self, name: &Token, value: Object) -> Result<Object> {
         if self.values.contains_key(name.get_lexeme()) {
             self.values
@@ -69,5 +86,15 @@ impl Environment {
             RuntimeErrorType::UndefinedVariable(name.get_lexeme().to_string()),
         )
         .into())
+    }
+
+    pub fn assign_at(env: Option<Rc<RefCell<Self>>>, distance: usize, name: &Token, value: Object) -> Result<Object> {
+        if let Some(environment) = Environment::ancestor(env, distance) {
+            if let Some(obj) = environment.borrow_mut().values.insert(name.get_lexeme().to_string(), Some(value)).unwrap() {
+                return Ok(obj);
+            }
+            return Err(RuntimeError::new(name.clone(), RuntimeErrorType::VariableIsNotInit(name.get_lexeme().to_string())).into());
+        }
+        Err(RuntimeError::new(name.clone(), RuntimeErrorType::BugEnvironmentNotInit).into())
     }
 }

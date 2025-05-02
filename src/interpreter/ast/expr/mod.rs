@@ -28,15 +28,16 @@ pub trait ExprVisitor<T> {
     fn visit_call(&mut self, call: &Call<T>) -> T;
 }
 
-pub trait CloneExpr<T> {
-    fn clone_expr(&self) -> Box<dyn Expr<T>>;
-}
-
 pub trait Expr<T>: Downcast + CloneExpr<T> {
     fn accept(&self, visitor: &mut dyn ExprVisitor<T>) -> T;
+    fn id(&self) -> u64;
 }
 
 impl_downcast!(Expr<T>);
+
+pub trait CloneExpr<T> {
+    fn clone_expr(&self) -> Box<dyn Expr<T>>;
+}
 
 impl<T, R> CloneExpr<T> for R
 where

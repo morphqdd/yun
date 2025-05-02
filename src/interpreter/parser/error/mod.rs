@@ -54,6 +54,8 @@ pub enum ParserErrorType {
     ExpectedRightParenAfterParams,
     ExpectedLeftBraceBeforeBody,
     ExpectedParamName,
+    CantReadLocalVariableInItsOwnInit,
+    CantReturnFromTopLevelCode,
 }
 
 impl Display for ParserErrorType {
@@ -101,6 +103,8 @@ impl Display for ParserErrorType {
             }
             ParserErrorType::ExpectedLeftBraceBeforeBody => write!(f, "Expected '{{' after body!"),
             ParserErrorType::ExpectedParamName => write!(f, "Expected parameter name!"),
+            ParserErrorType::CantReadLocalVariableInItsOwnInit => write!(f, "Can't read local variable in it's own init!"),
+            ParserErrorType::CantReturnFromTopLevelCode => write!(f, "Can't return from top level code!"),
         }
     }
 }

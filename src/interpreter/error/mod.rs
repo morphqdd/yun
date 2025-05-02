@@ -6,8 +6,6 @@ use crate::interpreter::Interpreter;
 use std::fmt::{Display, Formatter};
 use std::num::ParseFloatError;
 use thiserror::Error;
-use crate::interpreter::ast::stmt::return_stmt::Return;
-
 pub type Result<T> = std::result::Result<T, InterpreterError>;
 
 #[derive(Debug, Clone, Error)]

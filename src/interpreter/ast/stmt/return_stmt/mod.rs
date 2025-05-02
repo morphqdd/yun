@@ -1,9 +1,6 @@
 use crate::interpreter::ast::expr::Expr;
 use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
-use crate::interpreter::error::InterpreterError;
-use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::Token;
-use crate::interpreter::error::Result;
 
 #[derive(Clone)]
 pub struct Return<T: 'static> {

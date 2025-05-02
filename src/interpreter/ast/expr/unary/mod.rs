@@ -2,9 +2,12 @@ use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use std::ops::Deref;
+use std::sync::atomic::Ordering;
+use crate::utils::NEXT_ID;
 
 #[derive(Clone)]
 pub struct Unary<T: 'static> {
+    id: u64,
     operator: Token,
     right: Box<dyn Expr<T>>,
 }
@@ -12,7 +15,7 @@ pub struct Unary<T: 'static> {
 impl<T> Unary<T> {
     #[inline]
     pub fn new(operator: Token, right: Box<dyn Expr<T>>) -> Self {
-        Self { operator, right }
+        Self { id: NEXT_ID.fetch_add(1, Ordering::Relaxed), operator, right }
     }
 
     #[inline]
@@ -39,5 +42,9 @@ impl<T> Unary<T> {
 impl<T: 'static + Clone> Expr<T> for Unary<T> {
     fn accept(&self, visitor: &mut dyn ExprVisitor<T>) -> T {
         visitor.visit_unary(self)
+    }
+
+    fn id(&self) -> u64 {
+        self.id
     }
 }

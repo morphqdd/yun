@@ -1,16 +1,19 @@
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::scanner::token::object::Object;
 use std::fmt::Display;
+use std::sync::atomic::Ordering;
+use crate::utils::NEXT_ID;
 
 #[derive(Clone)]
 pub struct Literal {
+    id: u64,
     value: Option<Object>,
 }
 
 impl Literal {
     #[inline]
     pub fn new(value: Option<Object>) -> Self {
-        Self { value }
+        Self { id: NEXT_ID.fetch_add(1, Ordering::Relaxed), value }
     }
 
     #[inline]
@@ -23,6 +26,10 @@ impl<T> Expr<T> for Literal {
     #[inline]
     fn accept(&self, visitor: &mut dyn ExprVisitor<T>) -> T {
         visitor.visit_literal(self)
+    }
+
+    fn id(&self) -> u64 {
+        self.id
     }
 }
 

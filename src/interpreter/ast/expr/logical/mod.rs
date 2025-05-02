@@ -1,9 +1,12 @@
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::scanner::token::Token;
 use std::ops::Deref;
+use std::sync::atomic::Ordering;
+use crate::utils::NEXT_ID;
 
 #[derive(Clone)]
 pub struct Logical<T: 'static> {
+    id: u64,
     left: Box<dyn Expr<T>>,
     operator: Token,
     right: Box<dyn Expr<T>>,
@@ -12,6 +15,7 @@ pub struct Logical<T: 'static> {
 impl<T> Logical<T> {
     pub fn new(left: Box<dyn Expr<T>>, operator: Token, right: Box<dyn Expr<T>>) -> Self {
         Self {
+            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
             left,
             operator,
             right,
@@ -34,5 +38,9 @@ impl<T> Logical<T> {
 impl<T: 'static + Clone> Expr<T> for Logical<T> {
     fn accept(&self, visitor: &mut dyn ExprVisitor<T>) -> T {
         visitor.visit_logical(self)
+    }
+
+    fn id(&self) -> u64 {
+        self.id
     }
 }
