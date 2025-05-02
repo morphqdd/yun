@@ -8,9 +8,11 @@ pub mod shell;
 use crate::interpreter::ast::expr::assignment::Assign;
 use crate::interpreter::ast::expr::binary::Binary;
 use crate::interpreter::ast::expr::call::Call;
+use crate::interpreter::ast::expr::get::Get;
 use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::logical::Logical;
+use crate::interpreter::ast::expr::set::Set;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
 use crate::interpreter::ast::expr::{CloneExpr, Expr, ExprVisitor};
@@ -27,13 +29,13 @@ use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
 use crate::interpreter::environment::Environment;
 use crate::interpreter::error::Result;
 use crate::interpreter::error::{InterpreterError, RuntimeError, RuntimeErrorType};
-use crate::interpreter::parser::resolver::Resolver;
 use crate::interpreter::parser::Parser;
-use crate::interpreter::scanner::token::object::callable::Callable;
-use crate::interpreter::scanner::token::object::Object;
-use crate::interpreter::scanner::token::token_type::TokenType;
-use crate::interpreter::scanner::token::Token;
+use crate::interpreter::parser::resolver::Resolver;
 use crate::interpreter::scanner::Scanner;
+use crate::interpreter::scanner::token::Token;
+use crate::interpreter::scanner::token::object::Object;
+use crate::interpreter::scanner::token::object::callable::Callable;
+use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::shell::Shell;
 use crate::rc;
 use crate::utils::next_id;
@@ -376,6 +378,11 @@ impl ExprVisitor<Result<Object>> for Interpreter {
             args.push(self.evaluate(arg)?);
         }
 
+        let callable = match callable {
+            Object::Class(class) => Object::Callable(class.into()),
+            _ => callable,
+        };
+
         match callable {
             Object::Callable(callable) => {
                 if args.len() != callable.arity() {
@@ -389,6 +396,26 @@ impl ExprVisitor<Result<Object>> for Interpreter {
             }
             _ => Err(RuntimeError::new(call_.get_token(), RuntimeErrorType::NotCallable).into()),
         }
+    }
+
+    fn visit_get(&mut self, get: &Get<Result<Object>>) -> Result<Object> {
+        let (name, obj) = get.extract();
+        let obj = self.evaluate(obj)?;
+        if let Object::Instance(instance) = obj {
+            return instance.get(name);
+        }
+        Err(RuntimeError::new(name.clone(), RuntimeErrorType::OnlyInstancesHaveProperties).into())
+    }
+
+    fn visit_set(&mut self, set: &Set<Result<Object>>) -> Result<Object> {
+        let (name, obj, value) = set.extract();
+        let obj = self.evaluate(obj)?;
+        if let Object::Instance(instance) = obj {
+            let value = self.evaluate(value)?;
+            instance.set(name, value.clone());
+            return Ok(value);
+        }
+        Err(RuntimeError::new(name.clone(), RuntimeErrorType::OnlyInstancesHaveProperties).into())
     }
 }
 

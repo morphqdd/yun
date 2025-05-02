@@ -1,13 +1,16 @@
 use crate::b;
+use crate::interpreter::ast::expr::Expr;
 use crate::interpreter::ast::expr::assignment::Assign;
 use crate::interpreter::ast::expr::binary::Binary;
 use crate::interpreter::ast::expr::call::Call;
+use crate::interpreter::ast::expr::get::Get;
 use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::logical::Logical;
+use crate::interpreter::ast::expr::set::Set;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
-use crate::interpreter::ast::expr::Expr;
+use crate::interpreter::ast::stmt::Stmt;
 use crate::interpreter::ast::stmt::block::Block;
 use crate::interpreter::ast::stmt::class::Class;
 use crate::interpreter::ast::stmt::fun_stmt::Fun;
@@ -17,12 +20,11 @@ use crate::interpreter::ast::stmt::print::Print;
 use crate::interpreter::ast::stmt::return_stmt::Return;
 use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
 use crate::interpreter::ast::stmt::while_stmt::While;
-use crate::interpreter::ast::stmt::Stmt;
 use crate::interpreter::error::Result;
 use crate::interpreter::parser::error::{ParserError, ParserErrorType};
+use crate::interpreter::scanner::token::Token;
 use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
-use crate::interpreter::scanner::token::Token;
 use std::marker::PhantomData;
 
 pub mod error;
@@ -317,6 +319,11 @@ where
                 return Ok(b!(Assign::new(name, value)));
             }
 
+            if let Some(expr) = expr.downcast_ref::<Get<T>>() {
+                let (name, obj) = expr.extract();
+                return Ok(b!(Set::new(name.clone(), obj.clone_expr(), value)));
+            }
+
             return Err(ParserError::new(token, ParserErrorType::InvalidAssignmentTarget).into());
         }
 
@@ -415,6 +422,12 @@ where
         loop {
             if self._match(vec![TokenType::LeftParen]) {
                 expr = self.finish_call(expr)?;
+            } else if self._match(vec![TokenType::Dot]) {
+                let name = self.consume(
+                    TokenType::Identifier,
+                    ParserErrorType::ExpectedPropertyAfterDot,
+                )?;
+                expr = b!(Get::new(name, expr))
             } else {
                 break;
             }

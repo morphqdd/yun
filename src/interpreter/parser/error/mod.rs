@@ -58,6 +58,7 @@ pub enum ParserErrorType {
     CantReturnFromTopLevelCode,
     ExpectedIdentAfterClassDecl,
     NotAFunc,
+    ExpectedPropertyAfterDot,
 }
 
 impl Display for ParserErrorType {
@@ -115,6 +116,7 @@ impl Display for ParserErrorType {
                 write!(f, "Expected identifier after class declaration!")
             }
             ParserErrorType::NotAFunc => write!(f, "Not a function!"),
+            ParserErrorType::ExpectedPropertyAfterDot => write!(f, "Expected property after '.'!"),
         }
     }
 }

@@ -4,6 +4,7 @@ use crate::interpreter::error::RuntimeErrorType;
 use crate::interpreter::error::{InterpreterError, Result};
 use crate::interpreter::scanner::token::object::callable::Callable;
 use crate::interpreter::scanner::token::object::class::Class;
+use crate::interpreter::scanner::token::object::instance::Instance;
 use crate::rc;
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -13,6 +14,7 @@ use std::rc::Rc;
 
 pub mod callable;
 pub mod class;
+pub mod instance;
 
 #[derive(Debug, Clone)]
 pub enum Object {
@@ -21,6 +23,7 @@ pub enum Object {
     Bool(bool),
     Callable(Callable),
     Class(Class),
+    Instance(Instance),
     Nil,
     Void,
 }
@@ -35,6 +38,7 @@ impl Object {
             Object::Void => "void".into(),
             Object::Callable { .. } => "<callable>".into(),
             Object::Class(class) => class.to_string(),
+            Object::Instance(instance) => instance.to_string(),
         }
     }
 
@@ -189,6 +193,7 @@ impl Display for Object {
             Object::Void => write!(f, ""),
             Object::Callable(callable) => write!(f, "{}", callable),
             Object::Class(class) => write!(f, "{}", class),
+            Object::Instance(instance) => write!(f, "{}", instance),
         }
     }
 }

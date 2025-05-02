@@ -1,9 +1,12 @@
+use crate::interpreter::Interpreter;
 use crate::interpreter::ast::expr::assignment::Assign;
 use crate::interpreter::ast::expr::binary::Binary;
 use crate::interpreter::ast::expr::call::Call;
+use crate::interpreter::ast::expr::get::Get;
 use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::logical::Logical;
+use crate::interpreter::ast::expr::set::Set;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
@@ -19,9 +22,8 @@ use crate::interpreter::ast::stmt::while_stmt::While;
 use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
 use crate::interpreter::error::Result;
 use crate::interpreter::parser::error::{ParserError, ParserErrorType};
-use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::Token;
-use crate::interpreter::Interpreter;
+use crate::interpreter::scanner::token::object::Object;
 use std::collections::HashMap;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -178,6 +180,18 @@ impl ExprVisitor<Result<Object>> for Resolver<'_> {
         for arg in call.get_args() {
             self.resolve_expr(arg)?;
         }
+        Ok(Object::Nil)
+    }
+
+    fn visit_get(&mut self, get: &Get<Result<Object>>) -> Result<Object> {
+        self.resolve_expr(get.extract().1)?;
+        Ok(Object::Nil)
+    }
+
+    fn visit_set(&mut self, set: &Set<Result<Object>>) -> Result<Object> {
+        let (_, obj, value) = set.extract();
+        self.resolve_expr(obj)?;
+        self.resolve_expr(value)?;
         Ok(Object::Nil)
     }
 }

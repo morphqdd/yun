@@ -1,19 +1,23 @@
 use crate::interpreter::ast::expr::assignment::Assign;
 use crate::interpreter::ast::expr::binary::Binary;
 use crate::interpreter::ast::expr::call::Call;
+use crate::interpreter::ast::expr::get::Get;
 use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::logical::Logical;
+use crate::interpreter::ast::expr::set::Set;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
-use downcast_rs::{impl_downcast, Downcast};
+use downcast_rs::{Downcast, impl_downcast};
 
 pub mod assignment;
 pub mod binary;
 pub mod call;
+pub mod get;
 pub mod grouping;
 pub mod literal;
 pub mod logical;
+pub mod set;
 pub mod unary;
 pub mod variable;
 
@@ -26,6 +30,8 @@ pub trait ExprVisitor<T> {
     fn visit_assign(&mut self, assign: &Assign<T>) -> T;
     fn visit_logical(&mut self, logical: &Logical<T>) -> T;
     fn visit_call(&mut self, call: &Call<T>) -> T;
+    fn visit_get(&mut self, get: &Get<T>) -> T;
+    fn visit_set(&mut self, set: &Set<T>) -> T;
 }
 
 pub trait Expr<T>: Downcast + CloneExpr<T> {

@@ -1,8 +1,8 @@
+use crate::interpreter::Interpreter;
 use crate::interpreter::parser::error::ParserError;
 use crate::interpreter::scanner::error::ScannerError;
-use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::Token;
-use crate::interpreter::Interpreter;
+use crate::interpreter::scanner::token::object::Object;
 use std::fmt::{Display, Formatter};
 use std::num::ParseFloatError;
 use thiserror::Error;
@@ -21,7 +21,7 @@ pub enum InterpreterError {
     #[error("{0}")]
     Custom(String),
     #[error("{0}")]
-    Return(Object)
+    Return(Object),
 }
 
 impl From<String> for InterpreterError {
@@ -80,6 +80,8 @@ pub enum RuntimeErrorType {
     NotCallable,
     UserPanicWithMsg(Object),
     CantToNum(String),
+    OnlyInstancesHaveProperties,
+    UndefinedProperty(String),
 }
 
 impl Display for RuntimeErrorType {
@@ -113,8 +115,14 @@ impl Display for RuntimeErrorType {
                 write!(f, "Arity of functions not equal size of args")
             }
             RuntimeErrorType::NotCallable => write!(f, "Not callable"),
-            RuntimeErrorType::UserPanicWithMsg(msg) => write!(f, "Panic!: {}", msg),
-            RuntimeErrorType::CantToNum(ty) => write!(f, "this type '{}' cannot be represented as a number", ty),
+            RuntimeErrorType::UserPanicWithMsg(msg) => write!(f, "{}", msg),
+            RuntimeErrorType::CantToNum(ty) => {
+                write!(f, "this type '{}' cannot be represented as a number", ty)
+            }
+            RuntimeErrorType::OnlyInstancesHaveProperties => {
+                write!(f, "Only instances have properties")
+            }
+            RuntimeErrorType::UndefinedProperty(name) => write!(f, "Undefined property '{}'", name),
         }
     }
 }
