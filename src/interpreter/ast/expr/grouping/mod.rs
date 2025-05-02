@@ -1,7 +1,6 @@
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
+use crate::utils::next_id;
 use std::ops::Deref;
-use std::sync::atomic::Ordering;
-use crate::utils::NEXT_ID;
 
 #[derive(Clone)]
 pub struct Grouping<T: 'static> {
@@ -12,7 +11,10 @@ pub struct Grouping<T: 'static> {
 impl<T> Grouping<T> {
     #[inline]
     pub fn new(expression: Box<dyn Expr<T>>) -> Self {
-        Self { id: NEXT_ID.fetch_add(1, Ordering::Relaxed), expression }
+        Self {
+            id: next_id(),
+            expression,
+        }
     }
 
     #[inline]

@@ -1,8 +1,7 @@
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::scanner::token::object::Object;
+use crate::utils::next_id;
 use std::fmt::Display;
-use std::sync::atomic::Ordering;
-use crate::utils::NEXT_ID;
 
 #[derive(Clone)]
 pub struct Literal {
@@ -13,7 +12,10 @@ pub struct Literal {
 impl Literal {
     #[inline]
     pub fn new(value: Option<Object>) -> Self {
-        Self { id: NEXT_ID.fetch_add(1, Ordering::Relaxed), value }
+        Self {
+            id: next_id(),
+            value,
+        }
     }
 
     #[inline]

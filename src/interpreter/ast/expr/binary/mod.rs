@@ -1,9 +1,8 @@
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
+use crate::utils::next_id;
 use std::ops::Deref;
-use std::sync::atomic::Ordering;
-use crate::utils::NEXT_ID;
 
 #[derive(Clone)]
 pub struct Binary<T: 'static> {
@@ -16,7 +15,7 @@ pub struct Binary<T: 'static> {
 impl<T> Binary<T> {
     pub fn new(left: Box<dyn Expr<T>>, operation: Token, right: Box<dyn Expr<T>>) -> Binary<T> {
         Binary {
-            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+            id: next_id(),
             left,
             operation,
             right,

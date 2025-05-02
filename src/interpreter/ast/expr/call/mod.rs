@@ -1,8 +1,7 @@
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::scanner::token::Token;
+use crate::utils::next_id;
 use std::ops::Deref;
-use std::sync::atomic::Ordering;
-use crate::utils::NEXT_ID;
 
 #[derive(Clone)]
 pub struct Call<T: 'static> {
@@ -15,7 +14,7 @@ pub struct Call<T: 'static> {
 impl<T> Call<T> {
     pub fn new(callable: Box<dyn Expr<T>>, parens: Token, args: Vec<Box<dyn Expr<T>>>) -> Self {
         Self {
-            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+            id: next_id(),
             callable,
             parens,
             args,

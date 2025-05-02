@@ -1,9 +1,8 @@
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
+use crate::utils::next_id;
 use std::ops::Deref;
-use std::sync::atomic::Ordering;
-use crate::utils::NEXT_ID;
 
 #[derive(Clone)]
 pub struct Unary<T: 'static> {
@@ -15,7 +14,11 @@ pub struct Unary<T: 'static> {
 impl<T> Unary<T> {
     #[inline]
     pub fn new(operator: Token, right: Box<dyn Expr<T>>) -> Self {
-        Self { id: NEXT_ID.fetch_add(1, Ordering::Relaxed), operator, right }
+        Self {
+            id: next_id(),
+            operator,
+            right,
+        }
     }
 
     #[inline]

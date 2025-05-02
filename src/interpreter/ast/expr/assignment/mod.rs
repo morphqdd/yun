@@ -1,8 +1,7 @@
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::scanner::token::Token;
+use crate::utils::next_id;
 use std::ops::Deref;
-use std::sync::atomic::Ordering;
-use crate::utils::NEXT_ID;
 
 #[derive(Clone)]
 pub struct Assign<T: 'static> {
@@ -13,7 +12,11 @@ pub struct Assign<T: 'static> {
 
 impl<T> Assign<T> {
     pub fn new(token: Token, value: Box<dyn Expr<T>>) -> Self {
-        Self { id: NEXT_ID.fetch_add(1, Ordering::Relaxed), token, value }
+        Self {
+            id: next_id(),
+            token,
+            value,
+        }
     }
 
     pub fn get_token(&self) -> Token {

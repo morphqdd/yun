@@ -39,10 +39,11 @@ impl Object {
     }
 
     pub fn function(stmt: Fun<Result<Object>>, closure: Option<Rc<RefCell<Environment>>>) -> Self {
-        let (name, params, body) = stmt.extract();
+        let (id, name, params, body) = stmt.extract();
         let arity = params.len();
 
         Self::Callable(Callable::new(
+            id,
             rc!(move |interpreter, args| {
                 let body = body.clone();
                 let mut env = Environment::new(closure.clone());
@@ -160,6 +161,7 @@ impl PartialEq<Self> for Object {
             (Object::Bool(a), Object::Bool(b)) => a == b,
             (Object::Nil, Object::Nil) => true,
             (Object::Void, Object::Void) => true,
+            (Object::Callable(callable), Object::Callable(callable2)) => callable == callable2,
             _ => false,
         }
     }

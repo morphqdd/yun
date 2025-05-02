@@ -36,6 +36,7 @@ use crate::interpreter::scanner::token::Token;
 use crate::interpreter::scanner::Scanner;
 use crate::interpreter::shell::Shell;
 use crate::rc;
+use crate::utils::next_id;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::Write;
@@ -57,6 +58,7 @@ impl Default for Interpreter {
         globals.define(
             "clock",
             Some(Object::Callable(Callable::new(
+                next_id(),
                 rc!(|_, _| -> Result<Object> {
                     Ok(Object::Number(
                         std::time::SystemTime::now()
@@ -66,43 +68,47 @@ impl Default for Interpreter {
                     ))
                 }),
                 rc!(|| 0),
-                rc!(|| "<native function clock>".into()),
+                rc!(|| "clock".into()),
             ))),
         );
 
         globals.define(
             "panic",
             Some(Object::Callable(Callable::new(
+                next_id(),
                 rc!(|_, args| Err(RuntimeErrorType::UserPanicWithMsg(args[0].clone()).into())),
                 rc!(|| 1),
-                rc!(|| "<native function panic>".into()),
+                rc!(|| "panic".into()),
             ))),
         );
 
         globals.define(
             "string",
             Some(Object::Callable(Callable::new(
+                next_id(),
                 rc!(|_, args| Ok(Object::String(args[0].clone().to_string()))),
                 rc!(|| 1),
-                rc!(|| "<native function string>".into()),
+                rc!(|| "string".into()),
             ))),
         );
 
         globals.define(
             "exit",
             Some(Object::Callable(Callable::new(
+                next_id(),
                 rc!(|_, _| exit(0)),
                 rc!(|| 0),
-                rc!(|| "<native function exit>".into()),
+                rc!(|| "exit".into()),
             ))),
         );
 
         globals.define(
             "exitWithCode",
             Some(Object::Callable(Callable::new(
+                next_id(),
                 rc!(|_, args| exit(Into::<Result<i32>>::into(args[0].clone())?)),
                 rc!(|| 1),
-                rc!(|| "<native function exit>".into()),
+                rc!(|| "exitWithCode".into()),
             ))),
         );
 

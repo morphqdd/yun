@@ -8,6 +8,7 @@ type CallFn = Rc<dyn Fn(&mut Interpreter, Vec<Object>) -> Result<Object>>;
 
 #[derive(Clone)]
 pub struct Callable {
+    id: u64,
     call: CallFn,
     arity: Rc<dyn Fn() -> usize>,
     to_string: Rc<dyn Fn() -> String>,
@@ -15,11 +16,13 @@ pub struct Callable {
 
 impl Callable {
     pub fn new(
+        id: u64,
         call: CallFn,
         arity: Rc<dyn Fn() -> usize>,
         to_string: Rc<dyn Fn() -> String>,
     ) -> Self {
         Self {
+            id,
             call,
             arity,
             to_string,
@@ -47,6 +50,12 @@ impl Debug for Callable {
 
 impl Display for Callable {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "<function {}>", self.get_string())
+        write!(f, "<function#{} {}>", self.id, self.get_string())
+    }
+}
+
+impl PartialEq for Callable {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
     }
 }

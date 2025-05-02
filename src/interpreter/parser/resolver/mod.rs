@@ -108,7 +108,7 @@ where
         self.current_function = ty;
 
         self.begin_scope();
-        let (_, params, body) = func.clone().extract();
+        let (_, _, params, body) = func.clone().extract();
         for param in params {
             self.declare(&param);
             self.define(&param);
