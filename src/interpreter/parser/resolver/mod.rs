@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 use crate::interpreter::ast::expr::assignment::Assign;
 use crate::interpreter::ast::expr::binary::Binary;
 use crate::interpreter::ast::expr::call::Call;
@@ -20,13 +21,15 @@ use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::error::Result;
 use crate::interpreter::Interpreter;
 
-pub struct Resolver {
+pub struct Resolver<T> {
+    phantom: PhantomData<T>,
     interpreter: Interpreter,
 }
 
-impl<T> Resolver {
+impl<T: 'static> Resolver<T>
+where Resolver<T>: ExprVisitor<T> + StmtVisitor<T> {
     pub fn new(interpreter: Interpreter) -> Self {
-        Self { interpreter }
+        Self {phantom: Default::default(),  interpreter }
     }
 
     pub fn resolve(&mut self, stmts: Vec<Box<dyn Stmt<T>>>) {
@@ -36,15 +39,15 @@ impl<T> Resolver {
     }
 
     fn resolve_stmt(&mut  self, stmt: Box<dyn Stmt<T>>) {
-        stmt.accept(self)
+        stmt.accept(self);
     }
 
     fn resolve_expr(&mut self, expr: Box<dyn Expr<T>>) {
-        expr.accept(self)
+        expr.accept(self);
     }
 }
 
-impl ExprVisitor<Result<Object>> for Resolver {
+impl ExprVisitor<Result<Object>> for Resolver<Result<Object>> {
     fn visit_binary(&mut self, binary: &Binary<Result<Object>>) -> Result<Object> {
         todo!()
     }
@@ -78,36 +81,36 @@ impl ExprVisitor<Result<Object>> for Resolver {
     }
 }
 
-impl StmtVisitor<Result<Object>> for Resolver {
-    fn visit_expr(&mut self, stmt: Box<StmtExpr<Result<Object>>>) -> Result<Object> {
+impl StmtVisitor<Result<Object>> for Resolver<Result<Object>> {
+    fn visit_expr(&mut self, stmt: &StmtExpr<Result<Object>>) -> Result<Object> {
         todo!()
     }
 
-    fn visit_print(&mut self, stmt: Box<Print<Result<Object>>>) -> Result<Object> {
+    fn visit_print(&mut self, stmt: &Print<Result<Object>>) -> Result<Object> {
         todo!()
     }
 
-    fn visit_let(&mut self, stmt: Box<Let<Result<Object>>>) -> Result<Object> {
+    fn visit_let(&mut self, stmt: &Let<Result<Object>>) -> Result<Object> {
         todo!()
     }
 
-    fn visit_block(&mut self, stmt: Box<Block<Result<Object>>>) -> Result<Object> {
+    fn visit_block(&mut self, stmt: &Block<Result<Object>>) -> Result<Object> {
         todo!()
     }
 
-    fn visit_if(&mut self, stmt: Box<If<Result<Object>>>) -> Result<Object> {
+    fn visit_if(&mut self, stmt: &If<Result<Object>>) -> Result<Object> {
         todo!()
     }
 
-    fn visit_while(&mut self, stmt: Box<While<Result<Object>>>) -> Result<Object> {
+    fn visit_while(&mut self, stmt: &While<Result<Object>>) -> Result<Object> {
         todo!()
     }
 
-    fn visit_fun(&mut self, stmt: Box<Fun<Result<Object>>>) -> Result<Object> {
+    fn visit_fun(&mut self, stmt: &Fun<Result<Object>>) -> Result<Object> {
         todo!()
     }
 
-    fn visit_return(&mut self, stmt: Box<Return<Result<Object>>>) -> Result<Object> {
+    fn visit_return(&mut self, stmt: &Return<Result<Object>>) -> Result<Object> {
         todo!()
     }
 }

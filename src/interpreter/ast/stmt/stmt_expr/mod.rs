@@ -18,7 +18,7 @@ impl<T> StmtExpr<T> {
 }
 
 impl<T: 'static + Clone> Stmt<T> for StmtExpr<T> {
-    fn accept(self: Box<StmtExpr<T>>, visitor: &mut dyn StmtVisitor<T>) -> T {
+    fn accept(&self, visitor: &mut dyn StmtVisitor<T>) -> T {
         visitor.visit_expr(self)
     }
 }

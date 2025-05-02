@@ -16,13 +16,13 @@ impl<T> Return<T> {
         Self { token, expr }
     }
 
-    pub fn extract(self) -> (Token, Option<Box<dyn Expr<T>>>) {
-        (self.token, self.expr)
+    pub fn extract(&self) -> (&Token, Option<&dyn Expr<T>>) {
+        (&self.token, self.expr.as_deref())
     }
 }
 
 impl<T: 'static + Clone> Stmt<T> for Return<T> {
-    fn accept(self: Box<Self>, visitor: &mut dyn StmtVisitor<T>) -> T {
+    fn accept(&self, visitor: &mut dyn StmtVisitor<T>) -> T {
         visitor.visit_return(self)
     }
 }

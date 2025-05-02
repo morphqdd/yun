@@ -27,7 +27,7 @@ impl<T> Let<T> {
 }
 
 impl<T: 'static + Clone> Stmt<T> for Let<T> {
-    fn accept(self: Box<Let<T>>, visitor: &mut dyn StmtVisitor<T>) -> T {
+    fn accept(&self, visitor: &mut dyn StmtVisitor<T>) -> T {
         visitor.visit_let(self)
     }
 }

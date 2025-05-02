@@ -163,14 +163,14 @@ impl Interpreter {
     fn interpret(&mut self, statements: Vec<Box<dyn Stmt<Result<Object>>>>) -> Result<Object> {
         let mut res = Object::Void;
         for stmt in statements {
-            res = self.execute(stmt)?;
+            res = self.execute(stmt.deref())?;
         }
         Ok(res)
     }
 
     fn execute_block(
         &mut self,
-        statements: Vec<Box<dyn Stmt<Result<Object>>>>,
+        statements: Vec<&dyn Stmt<Result<Object>>>,
         environment: Rc<RefCell<Environment>>,
     ) -> Result<Object> {
         let previous = self.env.replace(environment);
@@ -185,7 +185,7 @@ impl Interpreter {
     }
 
     #[inline]
-    fn execute(&mut self, statement: Box<dyn Stmt<Result<Object>>>) -> Result<Object> {
+    fn execute(&mut self, statement: &dyn Stmt<Result<Object>>) -> Result<Object> {
         statement.accept(self)
     }
 
@@ -364,17 +364,17 @@ impl ExprVisitor<Result<Object>> for Interpreter {
 }
 
 impl StmtVisitor<Result<Object>> for Interpreter {
-    fn visit_expr(&mut self, stmt: Box<StmtExpr<Result<Object>>>) -> Result<Object> {
+    fn visit_expr(&mut self, stmt: &StmtExpr<Result<Object>>) -> Result<Object> {
         self.evaluate(stmt.expr())
     }
 
-    fn visit_print(&mut self, stmt: Box<Print<Result<Object>>>) -> Result<Object> {
+    fn visit_print(&mut self, stmt: &Print<Result<Object>>) -> Result<Object> {
         let value = self.evaluate(stmt.expr())?;
         println!("{}", value);
         Ok(Object::Nil)
     }
 
-    fn visit_let(&mut self, stmt: Box<Let<Result<Object>>>) -> Result<Object> {
+    fn visit_let(&mut self, stmt: &Let<Result<Object>>) -> Result<Object> {
         match stmt.get_initializer() {
             Some(initializer) => {
                 let value = self.evaluate(initializer)?;
@@ -409,15 +409,15 @@ impl StmtVisitor<Result<Object>> for Interpreter {
         Ok(Object::Nil)
     }
 
-    fn visit_block(&mut self, stmt: Box<Block<Result<Object>>>) -> Result<Object> {
+    fn visit_block(&mut self, stmt: &Block<Result<Object>>) -> Result<Object> {
         self.execute_block(
-            stmt.extract(),
+            stmt.get_stmts(),
             Rc::new(RefCell::new(Environment::new(self.env.clone()))),
         )?;
         Ok(Object::Nil)
     }
 
-    fn visit_if(&mut self, stmt: Box<If<Result<Object>>>) -> Result<Object> {
+    fn visit_if(&mut self, stmt: &If<Result<Object>>) -> Result<Object> {
         let (cond, then, else_) = stmt.extract();
         if self.evaluate(cond.deref())? == Object::Bool(true) {
             self.execute(then)?;
@@ -428,7 +428,7 @@ impl StmtVisitor<Result<Object>> for Interpreter {
         Ok(Object::Nil)
     }
 
-    fn visit_while(&mut self, stmt: Box<While<Result<Object>>>) -> Result<Object> {
+    fn visit_while(&mut self, stmt: &While<Result<Object>>) -> Result<Object> {
         let (cond, stmt) = stmt.extract();
         let mut evaluated_cond = self.evaluate(cond.deref())?;
         while self.is_truly(&evaluated_cond)? {
@@ -438,9 +438,9 @@ impl StmtVisitor<Result<Object>> for Interpreter {
         Ok(Object::Nil)
     }
 
-    fn visit_fun(&mut self, stmt: Box<Fun<Result<Object>>>) -> Result<Object> {
+    fn visit_fun(&mut self, stmt: &Fun<Result<Object>>) -> Result<Object> {
         let name = stmt.get_name();
-        let func = Object::function(*stmt, self.env.clone());
+        let func = Object::function(stmt.clone(), self.env.clone());
 
         match &self.env {
             None => {
@@ -456,7 +456,7 @@ impl StmtVisitor<Result<Object>> for Interpreter {
         Ok(Object::Nil)
     }
 
-    fn visit_return(&mut self, stmt: Box<Return<Result<Object>>>) -> Result<Object> {
+    fn visit_return(&mut self, stmt: &Return<Result<Object>>) -> Result<Object> {
         let (_, expr) = stmt.extract();
         if let Some(expr) = expr {
             Err(self.evaluate(expr.deref())?.into())

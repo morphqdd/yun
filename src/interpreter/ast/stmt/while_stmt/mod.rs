@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use crate::interpreter::ast::expr::Expr;
 use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
 
@@ -12,13 +13,13 @@ impl<T> While<T> {
         Self { cond, stmt }
     }
 
-    pub fn extract(self) -> (Box<dyn Expr<T>>, Box<dyn Stmt<T>>) {
-        (self.cond, self.stmt)
+    pub fn extract(&self) -> (&dyn Expr<T>, &dyn Stmt<T>) {
+        (self.cond.deref(), self.stmt.deref())
     }
 }
 
 impl<T: 'static + Clone> Stmt<T> for While<T> {
-    fn accept(self: Box<While<T>>, visitor: &mut dyn StmtVisitor<T>) -> T {
+    fn accept(&self, visitor: &mut dyn StmtVisitor<T>) -> T {
         visitor.visit_while(self)
     }
 }

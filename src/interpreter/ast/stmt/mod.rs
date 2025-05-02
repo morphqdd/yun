@@ -17,14 +17,14 @@ pub mod while_stmt;
 pub mod return_stmt;
 
 pub trait StmtVisitor<T> {
-    fn visit_expr(&mut self, stmt: Box<StmtExpr<T>>) -> T;
-    fn visit_print(&mut self, stmt: Box<Print<T>>) -> T;
-    fn visit_let(&mut self, stmt: Box<Let<T>>) -> T;
-    fn visit_block(&mut self, stmt: Box<Block<T>>) -> T;
-    fn visit_if(&mut self, stmt: Box<If<T>>) -> T;
-    fn visit_while(&mut self, stmt: Box<While<T>>) -> T;
-    fn visit_fun(&mut self, stmt: Box<Fun<T>>) -> T;
-    fn visit_return(&mut self, stmt: Box<Return<T>>) -> T;
+    fn visit_expr(&mut self, stmt: &StmtExpr<T>) -> T;
+    fn visit_print(&mut self, stmt: &Print<T>) -> T;
+    fn visit_let(&mut self, stmt: &Let<T>) -> T;
+    fn visit_block(&mut self, stmt: &Block<T>) -> T;
+    fn visit_if(&mut self, stmt: &If<T>) -> T;
+    fn visit_while(&mut self, stmt: &While<T>) -> T;
+    fn visit_fun(&mut self, stmt: &Fun<T>) -> T;
+    fn visit_return(&mut self, stmt: &Return<T>) -> T;
 }
 
 pub trait CloneStmt<T> {
@@ -32,7 +32,7 @@ pub trait CloneStmt<T> {
 }
 
 pub trait Stmt<T>: CloneStmt<T> {
-    fn accept(self: Box<Self>, visitor: &mut dyn StmtVisitor<T>) -> T;
+    fn accept(&self, visitor: &mut dyn StmtVisitor<T>) -> T;
 }
 
 impl<T, R> CloneStmt<T> for R

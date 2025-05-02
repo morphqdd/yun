@@ -5,7 +5,7 @@ fun fib(n) {
 
 let time = clock();
 for (let i = 0; i < 20; i = i + 1) {
-    print fib(i);
+    fib(i);
 }
 
 print (clock() - time) / 1000;

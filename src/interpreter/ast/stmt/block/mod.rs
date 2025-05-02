@@ -9,13 +9,13 @@ impl<T: Clone> Block<T> {
         Self { stmts }
     }
 
-    pub fn extract(self) -> Vec<Box<dyn Stmt<T>>> {
-        self.stmts
+    pub fn get_stmts(&self) -> Vec<&dyn Stmt<T>> {
+        self.stmts.iter().map(AsRef::as_ref).collect::<Vec<_>>()
     }
 }
 
 impl<T: 'static + Clone> Stmt<T> for Block<T> {
-    fn accept(self: Box<Block<T>>, visitor: &mut dyn StmtVisitor<T>) -> T {
+    fn accept(&self, visitor: &mut dyn StmtVisitor<T>) -> T {
         visitor.visit_block(self)
     }
 }

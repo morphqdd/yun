@@ -23,7 +23,7 @@ impl<T> Fun<T> {
 }
 
 impl<T: 'static + Clone> Stmt<T> for Fun<T> {
-    fn accept(self: Box<Self>, visitor: &mut dyn StmtVisitor<T>) -> T {
+    fn accept(&self, visitor: &mut dyn StmtVisitor<T>) -> T {
         visitor.visit_fun(self)
     }
 }

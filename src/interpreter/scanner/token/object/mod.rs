@@ -45,7 +45,7 @@ impl Object {
                 for i in 0..arity {
                     env.define(params[i].get_lexeme(), Some(args[i].clone()));
                 }
-                match interpreter.execute_block(body, Rc::new(RefCell::new(env))) {
+                match interpreter.execute_block(body.iter().map(AsRef::as_ref).collect(), Rc::new(RefCell::new(env))) {
                     Ok(value) => Ok(value),
                     Err(err) => match err {
                         InterpreterError::Return(value) => Ok(value),
