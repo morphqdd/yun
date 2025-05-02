@@ -25,7 +25,7 @@ use std::marker::PhantomData;
 use crate::interpreter::ast::stmt::return_stmt::Return;
 
 pub mod error;
-
+pub mod resolver;
 pub struct Parser<T> {
     phantom_data: PhantomData<T>,
     tokens: Vec<Token>,
