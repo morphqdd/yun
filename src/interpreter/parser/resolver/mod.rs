@@ -86,7 +86,7 @@ where Resolver<'a>: ExprVisitor<Result<Object>> + StmtVisitor<Result<Object>> {
         if self.stack.is_empty() {
             return;
         }
-        
+
         for i in (0..=self.stack.len().saturating_sub(1)).rev() {
             if self.stack.get(i).unwrap().contains_key(name.get_lexeme()) {
                 self.interpreter.resolve(expr.clone_expr(), self.stack.len() - i - 1);

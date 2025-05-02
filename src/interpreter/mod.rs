@@ -19,12 +19,14 @@ use crate::interpreter::ast::stmt::fun_stmt::Fun;
 use crate::interpreter::ast::stmt::if_stmt::If;
 use crate::interpreter::ast::stmt::let_stmt::Let;
 use crate::interpreter::ast::stmt::print::Print;
+use crate::interpreter::ast::stmt::return_stmt::Return;
 use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
 use crate::interpreter::ast::stmt::while_stmt::While;
 use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
 use crate::interpreter::environment::Environment;
 use crate::interpreter::error::Result;
 use crate::interpreter::error::{InterpreterError, RuntimeError, RuntimeErrorType};
+use crate::interpreter::parser::resolver::Resolver;
 use crate::interpreter::parser::Parser;
 use crate::interpreter::scanner::token::object::callable::Callable;
 use crate::interpreter::scanner::token::object::Object;
@@ -34,76 +36,74 @@ use crate::interpreter::scanner::Scanner;
 use crate::interpreter::shell::Shell;
 use crate::rc;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::io::Write;
-use std::ops::{Deref};
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
 use std::{fs, io};
-use std::collections::HashMap;
-use crate::interpreter::ast::stmt::return_stmt::Return;
-use crate::interpreter::parser::resolver::Resolver;
 
 pub struct Interpreter {
     env: Option<Rc<RefCell<Environment>>>,
     globals: Option<Rc<RefCell<Environment>>>,
-    locals: HashMap<u64, usize>
+    locals: HashMap<u64, usize>,
 }
 
 impl Default for Interpreter {
     fn default() -> Self {
         let mut globals = Environment::default();
-        // globals.define(
-        //     "clock",
-        //     Some(Object::Callable(Callable::new(
-        //         rc!(|_, _| -> Result<Object> {
-        //             Ok(Object::Number(
-        //                 std::time::SystemTime::now()
-        //                     .duration_since(std::time::SystemTime::UNIX_EPOCH)
-        //                     .unwrap()
-        //                     .as_micros() as f64,
-        //             ))
-        //         }),
-        //         rc!(|| 0),
-        //         rc!(|| "<native function clock>".into()),
-        //     ))),
-        // );
-        //
-        // globals.define(
-        //     "panic",
-        //     Some(Object::Callable(Callable::new(
-        //         rc!(|_, args| Err(RuntimeErrorType::UserPanicWithMsg(args[0].clone()).into())),
-        //         rc!(|| 1),
-        //         rc!(|| "<native function panic>".into()),
-        //     ))),
-        // );
-        //
-        // globals.define(
-        //     "string",
-        //     Some(Object::Callable(Callable::new(
-        //         rc!(|_, args| Ok(Object::String(args[0].clone().to_string()))),
-        //         rc!(|| 1),
-        //         rc!(|| "<native function string>".into()),
-        //     ))),
-        // );
-        //
-        // globals.define(
-        //     "exit",
-        //     Some(Object::Callable(Callable::new(
-        //         rc!(|_, _| exit(0)),
-        //         rc!(|| 0),
-        //         rc!(|| "<native function exit>".into()),
-        //     ))),
-        // );
-        //
-        // globals.define(
-        //     "exit_with_code",
-        //     Some(Object::Callable(Callable::new(
-        //         rc!(|_, args| exit(Into::<Result<i32>>::into(args[0].clone())?)),
-        //         rc!(|| 1),
-        //         rc!(|| "<native function exit>".into()),
-        //     ))),
-        // );
+        globals.define(
+            "clock",
+            Some(Object::Callable(Callable::new(
+                rc!(|_, _| -> Result<Object> {
+                    Ok(Object::Number(
+                        std::time::SystemTime::now()
+                            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                            .unwrap()
+                            .as_micros() as f64,
+                    ))
+                }),
+                rc!(|| 0),
+                rc!(|| "<native function clock>".into()),
+            ))),
+        );
+
+        globals.define(
+            "panic",
+            Some(Object::Callable(Callable::new(
+                rc!(|_, args| Err(RuntimeErrorType::UserPanicWithMsg(args[0].clone()).into())),
+                rc!(|| 1),
+                rc!(|| "<native function panic>".into()),
+            ))),
+        );
+
+        globals.define(
+            "string",
+            Some(Object::Callable(Callable::new(
+                rc!(|_, args| Ok(Object::String(args[0].clone().to_string()))),
+                rc!(|| 1),
+                rc!(|| "<native function string>".into()),
+            ))),
+        );
+
+        globals.define(
+            "exit",
+            Some(Object::Callable(Callable::new(
+                rc!(|_, _| exit(0)),
+                rc!(|| 0),
+                rc!(|| "<native function exit>".into()),
+            ))),
+        );
+
+        globals.define(
+            "exitWithCode",
+            Some(Object::Callable(Callable::new(
+                rc!(|_, args| exit(Into::<Result<i32>>::into(args[0].clone())?)),
+                rc!(|| 1),
+                rc!(|| "<native function exit>".into()),
+            ))),
+        );
 
         let globals = Rc::new(RefCell::new(globals));
 
@@ -148,15 +148,21 @@ impl Interpreter {
         Ok(())
     }
 
+    pub fn run_test(mut self, path: &PathBuf) -> Result<()> {
+        let code = fs::read_to_string(path).unwrap();
+        self.run(&code)?;
+        Ok(())
+    }
+
     fn run(&mut self, code: &str) -> Result<Object> {
         let mut scanner = Scanner::new(code);
         let tokens = scanner.scan_tokens()?;
 
         let mut parser = Parser::new(tokens);
         let ast = parser.parse()?;
-        
+
         Resolver::new(self).resolve(ast.iter().map(AsRef::as_ref).collect())?;
-        
+
         let res = self.interpret(ast)?;
 
         Ok(res)
@@ -202,10 +208,6 @@ impl Interpreter {
     }
 
     fn look_up_variable(&mut self, name: Token, var: &dyn Expr<Result<Object>>) -> Result<Object> {
-        println!("Looking up variable {:?}", name);
-        println!("Locals: {:?}", self.locals);
-        println!("Env: {:?}", self.env);
-        println!("Id: {}", var.id());
         if let Some(distance) = self.locals.get(&var.id()) {
             Environment::get_at(self.env.clone(), *distance, &name)
         } else {
@@ -341,7 +343,7 @@ impl ExprVisitor<Result<Object>> for Interpreter {
             Environment::assign_at(self.env.clone(), *distance, &name, value)
         } else {
             if let Some(globals) = self.globals.clone() {
-                return globals.borrow().get(&name);
+                return globals.borrow_mut().assign(&name, value);
             }
             Err(RuntimeError::new(name, RuntimeErrorType::BugEnvironmentNotInit).into())
         }
@@ -480,7 +482,7 @@ impl StmtVisitor<Result<Object>> for Interpreter {
         let (_, expr) = stmt.extract();
         if let Some(expr) = expr {
             Err(self.evaluate(expr)?.into())
-        } else{
+        } else {
             Err(Object::Nil.into())
         }
     }

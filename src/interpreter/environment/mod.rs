@@ -90,10 +90,8 @@ impl Environment {
 
     pub fn assign_at(env: Option<Rc<RefCell<Self>>>, distance: usize, name: &Token, value: Object) -> Result<Object> {
         if let Some(environment) = Environment::ancestor(env, distance) {
-            if let Some(obj) = environment.borrow_mut().values.insert(name.get_lexeme().to_string(), Some(value)).unwrap() {
-                return Ok(obj);
-            }
-            return Err(RuntimeError::new(name.clone(), RuntimeErrorType::VariableIsNotInit(name.get_lexeme().to_string())).into());
+            environment.borrow_mut().values.insert(name.get_lexeme().to_string(), Some(value.clone()));
+            return Ok(value);
         }
         Err(RuntimeError::new(name.clone(), RuntimeErrorType::BugEnvironmentNotInit).into())
     }

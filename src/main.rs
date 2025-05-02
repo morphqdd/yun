@@ -4,7 +4,8 @@ use yun_lib::interpreter::error::Result;
 use yun_lib::interpreter::Interpreter;
 
 mod cli;
-
+#[cfg(test)]
+mod test;
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.get_path() {
