@@ -1,8 +1,9 @@
 use crate::interpreter::ast::stmt::fun_stmt::Fun;
 use crate::interpreter::environment::Environment;
-use crate::interpreter::error::{InterpreterError, Result};
 use crate::interpreter::error::RuntimeErrorType;
+use crate::interpreter::error::{InterpreterError, Result};
 use crate::interpreter::scanner::token::object::callable::Callable;
+use crate::interpreter::scanner::token::object::class::Class;
 use crate::rc;
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -11,6 +12,7 @@ use std::ops::{Add, Div, Mul, Neg, Not, Sub};
 use std::rc::Rc;
 
 pub mod callable;
+pub mod class;
 
 #[derive(Debug, Clone)]
 pub enum Object {
@@ -18,6 +20,7 @@ pub enum Object {
     Number(f64),
     Bool(bool),
     Callable(Callable),
+    Class(Class),
     Nil,
     Void,
 }
@@ -31,6 +34,7 @@ impl Object {
             Object::Nil => "nil".into(),
             Object::Void => "void".into(),
             Object::Callable { .. } => "<callable>".into(),
+            Object::Class(class) => class.to_string(),
         }
     }
 
@@ -45,17 +49,24 @@ impl Object {
                 for i in 0..arity {
                     env.define(params[i].get_lexeme(), Some(args[i].clone()));
                 }
-                match interpreter.execute_block(body.iter().map(AsRef::as_ref).collect(), Rc::new(RefCell::new(env))) {
+                match interpreter.execute_block(
+                    body.iter().map(AsRef::as_ref).collect(),
+                    Rc::new(RefCell::new(env)),
+                ) {
                     Ok(value) => Ok(value),
                     Err(err) => match err {
                         InterpreterError::Return(value) => Ok(value),
                         _ => Err(err),
-                    }
+                    },
                 }
             }),
             rc!(move || arity),
             rc!(move || name.get_lexeme().into()),
         ))
+    }
+
+    pub fn class(name: &str) -> Self {
+        Self::Class(Class::new(name.to_string()))
     }
 }
 
@@ -76,11 +87,9 @@ impl Not for Object {
     fn not(self) -> Self::Output {
         match self {
             Object::Bool(b) => Ok(Object::Bool(!b)),
-            Object::String(_) => Ok(Object::Bool(false)),
-            Object::Number(_) => Ok(Object::Bool(false)),
             Object::Nil => Ok(Object::Bool(true)),
             Object::Void => Ok(Object::Bool(true)),
-            Object::Callable { .. } => Ok(Object::Bool(false)),
+            _ => Ok(Object::Bool(false)),
         }
     }
 }
@@ -91,11 +100,9 @@ impl Not for &Object {
     fn not(self) -> Self::Output {
         match self {
             Object::Bool(b) => Ok(Object::Bool(!b)),
-            Object::String(_) => Ok(Object::Bool(false)),
-            Object::Number(_) => Ok(Object::Bool(false)),
             Object::Nil => Ok(Object::Bool(true)),
             Object::Void => Ok(Object::Bool(true)),
-            Object::Callable { .. } => Ok(Object::Bool(false)),
+            _ => Ok(Object::Bool(false)),
         }
     }
 }
@@ -179,6 +186,7 @@ impl Display for Object {
             Object::Nil => write!(f, "nil"),
             Object::Void => write!(f, ""),
             Object::Callable(callable) => write!(f, "{}", callable),
+            Object::Class(class) => write!(f, "{}", class),
         }
     }
 }
@@ -187,13 +195,13 @@ impl From<Object> for Result<i32> {
     fn from(value: Object) -> Self {
         match value {
             Object::Number(n) => Ok(n as i32),
-            _ => Err(RuntimeErrorType::CantToNum(value.get_type()).into())
+            _ => Err(RuntimeErrorType::CantToNum(value.get_type()).into()),
         }
     }
 }
 
 impl From<Object> for InterpreterError {
     fn from(value: Object) -> Self {
-       InterpreterError::Return(value)
+        InterpreterError::Return(value)
     }
 }

@@ -9,10 +9,12 @@ use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
 use crate::interpreter::ast::expr::Expr;
 use crate::interpreter::ast::stmt::block::Block;
+use crate::interpreter::ast::stmt::class::Class;
 use crate::interpreter::ast::stmt::fun_stmt::Fun;
 use crate::interpreter::ast::stmt::if_stmt::If;
 use crate::interpreter::ast::stmt::let_stmt::Let;
 use crate::interpreter::ast::stmt::print::Print;
+use crate::interpreter::ast::stmt::return_stmt::Return;
 use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
 use crate::interpreter::ast::stmt::while_stmt::While;
 use crate::interpreter::ast::stmt::Stmt;
@@ -22,7 +24,6 @@ use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use std::marker::PhantomData;
-use crate::interpreter::ast::stmt::return_stmt::Return;
 
 pub mod error;
 pub mod resolver;
@@ -63,12 +64,11 @@ where
             return Ok(statements);
         }
 
-        Err(
-            error_stack
-                .into_iter()
-                .map(|err| err.to_string())
-                .collect::<String>().into()
-        )
+        Err(error_stack
+            .into_iter()
+            .map(|err| err.to_string())
+            .collect::<String>()
+            .into())
     }
 
     fn declaration(&mut self) -> Result<Box<dyn Stmt<T>>> {
@@ -80,7 +80,40 @@ where
             return self.fun_declaration();
         }
 
+        if self._match(vec![TokenType::Class]) {
+            return self.class_declaration();
+        }
+
         self.statement()
+    }
+
+    fn class_declaration(&mut self) -> Result<Box<dyn Stmt<T>>> {
+        let name = self.consume(
+            TokenType::Identifier,
+            ParserErrorType::ExpectedIdentAfterClassDecl,
+        )?;
+
+        self.consume(
+            TokenType::LeftBrace,
+            ParserErrorType::ExpectedLeftBraceBeforeBody,
+        )?;
+
+        let mut methods = vec![];
+        while !self.check(TokenType::RightBrace) && !self.is_at_end() {
+            match self.fun_declaration()?.downcast::<Fun<T>>() {
+                Ok(func) => methods.push(func),
+                Err(_) => {
+                    return Err(ParserError::new(self.previous(), ParserErrorType::NotAFunc).into());
+                }
+            }
+        }
+
+        self.consume(
+            TokenType::RightBrace,
+            ParserErrorType::ExpectedMatchingBrace,
+        )?;
+
+        Ok(b!(Class::new(name, methods)))
     }
 
     fn fun_declaration(&mut self) -> Result<Box<dyn Stmt<T>>> {

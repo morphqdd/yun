@@ -15,6 +15,7 @@ use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
 use crate::interpreter::ast::expr::{CloneExpr, Expr, ExprVisitor};
 use crate::interpreter::ast::stmt::block::Block;
+use crate::interpreter::ast::stmt::class::Class;
 use crate::interpreter::ast::stmt::fun_stmt::Fun;
 use crate::interpreter::ast::stmt::if_stmt::If;
 use crate::interpreter::ast::stmt::let_stmt::Let;
@@ -485,5 +486,16 @@ impl StmtVisitor<Result<Object>> for Interpreter {
         } else {
             Err(Object::Nil.into())
         }
+    }
+
+    fn visit_class(&mut self, class: &Class<Result<Object>>) -> Result<Object> {
+        let (name, methods) = class.extract();
+        if let Some(env) = self.env.clone() {
+            env.borrow_mut().define(name.get_lexeme(), None);
+            let class = Object::class(name.get_lexeme());
+            env.borrow_mut().assign(name, class)?;
+            return Ok(Object::Nil);
+        }
+        Err(RuntimeError::new(name.clone(), RuntimeErrorType::BugEnvironmentNotInit).into())
     }
 }

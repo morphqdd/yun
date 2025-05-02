@@ -91,3 +91,12 @@ fn closures_2() {
             .is_ok()
     )
 }
+
+#[test]
+fn class() {
+    assert!(
+        Interpreter::default()
+            .run_test(&PathBuf::from("./examples/class.yun"))
+            .is_ok()
+    )
+}

@@ -1,32 +1,33 @@
-use std::collections::HashMap;
 use crate::interpreter::ast::expr::assignment::Assign;
 use crate::interpreter::ast::expr::binary::Binary;
 use crate::interpreter::ast::expr::call::Call;
-use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::logical::Logical;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
+use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::ast::stmt::block::Block;
+use crate::interpreter::ast::stmt::class::Class;
 use crate::interpreter::ast::stmt::fun_stmt::Fun;
 use crate::interpreter::ast::stmt::if_stmt::If;
 use crate::interpreter::ast::stmt::let_stmt::Let;
 use crate::interpreter::ast::stmt::print::Print;
 use crate::interpreter::ast::stmt::return_stmt::Return;
 use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
-use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
 use crate::interpreter::ast::stmt::while_stmt::While;
-use crate::interpreter::scanner::token::object::Object;
+use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
 use crate::interpreter::error::Result;
-use crate::interpreter::Interpreter;
 use crate::interpreter::parser::error::{ParserError, ParserErrorType};
+use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::Token;
+use crate::interpreter::Interpreter;
+use std::collections::HashMap;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum FunctionType {
     Function,
-    None
+    None,
 }
 
 pub struct Resolver<'a> {
@@ -36,9 +37,15 @@ pub struct Resolver<'a> {
 }
 
 impl<'a> Resolver<'a>
-where Resolver<'a>: ExprVisitor<Result<Object>> + StmtVisitor<Result<Object>> {
-    pub fn new(interpreter:&'a mut Interpreter) -> Self {
-        Self {interpreter, stack: vec![], current_function: FunctionType::None }
+where
+    Resolver<'a>: ExprVisitor<Result<Object>> + StmtVisitor<Result<Object>>,
+{
+    pub fn new(interpreter: &'a mut Interpreter) -> Self {
+        Self {
+            interpreter,
+            stack: vec![],
+            current_function: FunctionType::None,
+        }
     }
 
     pub fn resolve(&mut self, stmts: Vec<&dyn Stmt<Result<Object>>>) -> Result<()> {
@@ -48,7 +55,7 @@ where Resolver<'a>: ExprVisitor<Result<Object>> + StmtVisitor<Result<Object>> {
         Ok(())
     }
 
-    fn resolve_stmt(&mut  self, stmt: &dyn Stmt<Result<Object>>) -> Result<Object> {
+    fn resolve_stmt(&mut self, stmt: &dyn Stmt<Result<Object>>) -> Result<Object> {
         stmt.accept(self)
     }
 
@@ -89,7 +96,8 @@ where Resolver<'a>: ExprVisitor<Result<Object>> + StmtVisitor<Result<Object>> {
 
         for i in (0..=self.stack.len().saturating_sub(1)).rev() {
             if self.stack.get(i).unwrap().contains_key(name.get_lexeme()) {
-                self.interpreter.resolve(expr.clone_expr(), self.stack.len() - i - 1);
+                self.interpreter
+                    .resolve(expr.clone_expr(), self.stack.len() - i - 1);
                 return;
             }
         }
@@ -140,7 +148,11 @@ impl ExprVisitor<Result<Object>> for Resolver<'_> {
         if let Some(scope) = self.stack.last() {
             if let Some(value) = scope.get(name.get_lexeme()) {
                 if !(*value) {
-                    return Err(ParserError::new(name, ParserErrorType::CantReadLocalVariableInItsOwnInit).into());
+                    return Err(ParserError::new(
+                        name,
+                        ParserErrorType::CantReadLocalVariableInItsOwnInit,
+                    )
+                    .into());
                 }
             }
         }
@@ -227,12 +239,23 @@ impl StmtVisitor<Result<Object>> for Resolver<'_> {
         let (name, expr) = stmt.extract();
 
         if self.current_function == FunctionType::None {
-            return Err(ParserError::new(name.clone(), ParserErrorType::CantReturnFromTopLevelCode).into());
+            return Err(ParserError::new(
+                name.clone(),
+                ParserErrorType::CantReturnFromTopLevelCode,
+            )
+            .into());
         }
 
         if let Some(expr) = expr {
             self.resolve_expr(expr)?;
         }
+        Ok(Object::Nil)
+    }
+
+    fn visit_class(&mut self, class: &Class<Result<Object>>) -> Result<Object> {
+        let (name, methods) = class.extract();
+        self.define(name);
+        self.declare(name);
         Ok(Object::Nil)
     }
 }
