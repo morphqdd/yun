@@ -74,6 +74,7 @@ impl Default for Interpreter {
                 }),
                 rc!(|| 0),
                 rc!(|| "clock".into()),
+                false,
             ))),
         );
 
@@ -86,6 +87,7 @@ impl Default for Interpreter {
                 rc!(|_, args| Err(RuntimeErrorType::UserPanicWithMsg(args[0].clone()).into())),
                 rc!(|| 1),
                 rc!(|| "panic".into()),
+                false,
             ))),
         );
 
@@ -98,6 +100,7 @@ impl Default for Interpreter {
                 rc!(|_, args| Ok(Object::String(args[0].clone().to_string()))),
                 rc!(|| 1),
                 rc!(|| "string".into()),
+                false,
             ))),
         );
 
@@ -110,6 +113,7 @@ impl Default for Interpreter {
                 rc!(|_, _| exit(0)),
                 rc!(|| 0),
                 rc!(|| "exit".into()),
+                false,
             ))),
         );
 
@@ -122,6 +126,7 @@ impl Default for Interpreter {
                 rc!(|_, args| exit(Into::<Result<i32>>::into(args[0].clone())?)),
                 rc!(|| 1),
                 rc!(|| "exitWithCode".into()),
+                false,
             ))),
         );
 

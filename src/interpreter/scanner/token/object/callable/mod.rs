@@ -50,13 +50,13 @@ impl Callable {
                     .execute_block(body.iter().map(AsRef::as_ref).collect(), closure.clone())
                 {
                     Ok(value) => {
-                        if (is_init) {
+                        if is_init {
                             return Environment::get_at(
                                 Some(closure.clone()),
                                 0,
                                 &Token::new(
                                     TokenType::Identifier,
-                                    "init",
+                                    "self",
                                     name.get_lit(),
                                     name.get_line(),
                                     name.get_pos_in_line(),
@@ -66,7 +66,22 @@ impl Callable {
                         Ok(value)
                     }
                     Err(err) => match err {
-                        InterpreterError::Return(value) => Ok(value),
+                        InterpreterError::Return(value) => {
+                            if is_init {
+                                return Environment::get_at(
+                                    Some(closure.clone()),
+                                    0,
+                                    &Token::new(
+                                        TokenType::Identifier,
+                                        "self",
+                                        name.get_lit(),
+                                        name.get_line(),
+                                        name.get_pos_in_line(),
+                                    ),
+                                );
+                            }
+                            Ok(value)
+                        }
                         _ => Err(err),
                     },
                 }

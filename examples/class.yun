@@ -1,8 +1,13 @@
 class Person {
-    greet(name) {
-        print "Hello, " + name;
+    init(name) {
+        self.name = name;
+        return;
+    }
+
+    greet() {
+        print "Hello, " + self.name;
     }
 }
 
-let person = Person();
-person.greet("Gregory");
+let person = Person("Gregory");
+person.greet();

@@ -1,9 +1,9 @@
-use std::cell::RefCell;
 use crate::interpreter::error::Result;
 use crate::interpreter::error::{RuntimeError, RuntimeErrorType};
-use crate::interpreter::scanner::token::Token;
-use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::object::class::Class;
+use crate::interpreter::scanner::token::object::Object;
+use crate::interpreter::scanner::token::Token;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::rc::Rc;
@@ -26,14 +26,11 @@ impl Instance {
         if let Some(obj) = self.fields.borrow().get(name.get_lexeme()) {
             return Ok(obj.clone());
         }
-        
+
         if let Some(method) = self.class.find_method(name.get_lexeme()) {
-            
-            method.bind(self.clone())?;
-            
-            return Ok(method)
+            return method.bind(self.clone());
         }
-        
+
         Err(RuntimeError::new(
             name.clone(),
             RuntimeErrorType::UndefinedProperty(name.get_lexeme().to_string()),
@@ -42,7 +39,9 @@ impl Instance {
     }
 
     pub fn set(&self, name: &Token, value: Object) {
-        self.fields.borrow_mut().insert(name.get_lexeme().to_string(), value);
+        self.fields
+            .borrow_mut()
+            .insert(name.get_lexeme().to_string(), value);
     }
 }
 

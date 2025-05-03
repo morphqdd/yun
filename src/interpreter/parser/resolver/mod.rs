@@ -1,4 +1,3 @@
-use crate::interpreter::Interpreter;
 use crate::interpreter::ast::expr::assignment::Assign;
 use crate::interpreter::ast::expr::binary::Binary;
 use crate::interpreter::ast::expr::call::Call;
@@ -6,6 +5,7 @@ use crate::interpreter::ast::expr::get::Get;
 use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::logical::Logical;
+use crate::interpreter::ast::expr::self_expr::SelfExpr;
 use crate::interpreter::ast::expr::set::Set;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
@@ -22,22 +22,23 @@ use crate::interpreter::ast::stmt::while_stmt::While;
 use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
 use crate::interpreter::error::Result;
 use crate::interpreter::parser::error::{ParserError, ParserErrorType};
-use crate::interpreter::scanner::token::Token;
 use crate::interpreter::scanner::token::object::Object;
+use crate::interpreter::scanner::token::Token;
+use crate::interpreter::Interpreter;
 use std::collections::HashMap;
-use crate::interpreter::ast::expr::self_expr::SelfExpr;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum FunctionType {
     Function,
     Method,
+    Initializer,
     None,
 }
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum ClassType {
     Class,
-    None
+    None,
 }
 
 pub struct Resolver<'a> {
@@ -207,7 +208,11 @@ impl ExprVisitor<Result<Object>> for Resolver<'_> {
 
     fn visit_self(&mut self, self_val: &SelfExpr) -> Result<Object> {
         if self.current_class == ClassType::None {
-            return Err(ParserError::new(self_val.get_name(), ParserErrorType::CantUseSelfOutsideClass).into())
+            return Err(ParserError::new(
+                self_val.get_name(),
+                ParserErrorType::CantUseSelfOutsideClass,
+            )
+            .into());
         }
         self.resolve_local(self_val, &self_val.get_name());
         Ok(Object::Nil)
@@ -279,6 +284,13 @@ impl StmtVisitor<Result<Object>> for Resolver<'_> {
         }
 
         if let Some(expr) = expr {
+            if self.current_function == FunctionType::Initializer {
+                return Err(ParserError::new(
+                    name.clone(),
+                    ParserErrorType::CantReturnFromInitializer,
+                )
+                .into());
+            }
             self.resolve_expr(expr)?;
         }
         Ok(Object::Nil)
@@ -288,7 +300,7 @@ impl StmtVisitor<Result<Object>> for Resolver<'_> {
         let (name, methods) = class.extract();
         let enclosing_ty = self.current_class;
         self.current_class = ClassType::Class;
-        
+
         self.define(name);
         self.declare(name);
 
@@ -297,13 +309,19 @@ impl StmtVisitor<Result<Object>> for Resolver<'_> {
         self.stack.last_mut().unwrap().insert("self".into(), true);
 
         for method in methods {
-            self.resolve_function(&method.clone(), FunctionType::Method)?
+            let mut ty = FunctionType::Method;
+
+            if method.get_name().get_lexeme().eq("init") {
+                ty = FunctionType::Initializer;
+            }
+
+            self.resolve_function(&method.clone(), ty)?
         }
 
         self.end_scope();
-        
+
         self.current_class = enclosing_ty;
-        
+
         Ok(Object::Nil)
     }
 }
