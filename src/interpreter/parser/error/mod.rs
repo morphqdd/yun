@@ -59,6 +59,7 @@ pub enum ParserErrorType {
     ExpectedIdentAfterClassDecl,
     NotAFunc,
     ExpectedPropertyAfterDot,
+    CantUseSelfOutsideClass,
 }
 
 impl Display for ParserErrorType {
@@ -117,6 +118,7 @@ impl Display for ParserErrorType {
             }
             ParserErrorType::NotAFunc => write!(f, "Not a function!"),
             ParserErrorType::ExpectedPropertyAfterDot => write!(f, "Expected property after '.'!"),
+            ParserErrorType::CantUseSelfOutsideClass => write!(f, "Can't use 'self' outside of a class!")
         }
     }
 }

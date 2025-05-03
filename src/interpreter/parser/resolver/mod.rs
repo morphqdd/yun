@@ -26,7 +26,6 @@ use crate::interpreter::scanner::token::Token;
 use crate::interpreter::scanner::token::object::Object;
 use std::collections::HashMap;
 use crate::interpreter::ast::expr::self_expr::SelfExpr;
-use crate::interpreter::parser::resolver::FunctionType::Function;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum FunctionType {
@@ -35,10 +34,17 @@ pub enum FunctionType {
     None,
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum ClassType {
+    Class,
+    None
+}
+
 pub struct Resolver<'a> {
     interpreter: &'a mut Interpreter,
     stack: Vec<HashMap<String, bool>>,
     current_function: FunctionType,
+    current_class: ClassType,
 }
 
 impl<'a> Resolver<'a>
@@ -50,6 +56,7 @@ where
             interpreter,
             stack: vec![],
             current_function: FunctionType::None,
+            current_class: ClassType::None,
         }
     }
 
@@ -199,6 +206,9 @@ impl ExprVisitor<Result<Object>> for Resolver<'_> {
     }
 
     fn visit_self(&mut self, self_val: &SelfExpr) -> Result<Object> {
+        if self.current_class == ClassType::None {
+            return Err(ParserError::new(self_val.get_name(), ParserErrorType::CantUseSelfOutsideClass).into())
+        }
         self.resolve_local(self_val, &self_val.get_name());
         Ok(Object::Nil)
     }
@@ -276,6 +286,9 @@ impl StmtVisitor<Result<Object>> for Resolver<'_> {
 
     fn visit_class(&mut self, class: &Class<Result<Object>>) -> Result<Object> {
         let (name, methods) = class.extract();
+        let enclosing_ty = self.current_class;
+        self.current_class = ClassType::Class;
+        
         self.define(name);
         self.declare(name);
 
@@ -288,6 +301,8 @@ impl StmtVisitor<Result<Object>> for Resolver<'_> {
         }
 
         self.end_scope();
+        
+        self.current_class = enclosing_ty;
         
         Ok(Object::Nil)
     }
