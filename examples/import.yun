@@ -1,6 +1,9 @@
-use "class";
+use "timer";
 
-let jake = Person("Jake");
-jake.greet();
-
-hello();
+let timer = Timer();
+let out = "";
+for (let i = 0; i < 1000; i = i + 1) {
+    out = string(out) + string(timer.elapsed()) + "\n";
+}
+print out;
+print timer.elapsed();

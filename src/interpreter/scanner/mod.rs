@@ -185,7 +185,7 @@ impl Scanner {
         }
 
         self.advance();
-        let value = self.source[self.start + 1..self.current - 1].to_string();
+        let value = self.source[self.start + 1..self.current - 1].replace("\\n", "\n");
         self.add_token(TokenType::String, Some(Object::String(value)));
         Ok(())
     }

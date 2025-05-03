@@ -1,4 +1,4 @@
-class Timer {
+export class Timer {
     init() {
         self.instant = instant();
     }
