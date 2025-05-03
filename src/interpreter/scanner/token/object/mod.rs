@@ -1,6 +1,6 @@
 use crate::interpreter::ast::stmt::fun_stmt::Fun;
 use crate::interpreter::environment::Environment;
-use crate::interpreter::error::RuntimeErrorType;
+use crate::interpreter::error::{RuntimeError, RuntimeErrorType};
 use crate::interpreter::error::{InterpreterError, Result};
 use crate::interpreter::scanner::token::object::callable::Callable;
 use crate::interpreter::scanner::token::object::class::Class;
@@ -8,9 +8,11 @@ use crate::interpreter::scanner::token::object::instance::Instance;
 use crate::rc;
 use std::cell::RefCell;
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::ops::{Add, Div, Mul, Neg, Not, Sub};
 use std::rc::Rc;
+use crate::interpreter::parser::resolver::FunctionType::Function;
 
 pub mod callable;
 pub mod class;
@@ -43,35 +45,25 @@ impl Object {
     }
 
     pub fn function(stmt: Fun<Result<Object>>, closure: Option<Rc<RefCell<Environment>>>) -> Self {
-        let (id, name, params, body) = stmt.extract();
-        let arity = params.len();
-
         Self::Callable(Callable::new(
-            id,
-            rc!(move |interpreter, args| {
-                let body = body.clone();
-                let mut env = Environment::new(closure.clone());
-                for i in 0..arity {
-                    env.define(params[i].get_lexeme(), Some(args[i].clone()));
-                }
-                match interpreter.execute_block(
-                    body.iter().map(AsRef::as_ref).collect(),
-                    Rc::new(RefCell::new(env)),
-                ) {
-                    Ok(value) => Ok(value),
-                    Err(err) => match err {
-                        InterpreterError::Return(value) => Ok(value),
-                        _ => Err(err),
-                    },
-                }
-            }),
-            rc!(move || arity),
-            rc!(move || name.get_lexeme().into()),
+            Some(Rc::new(RefCell::new(stmt))),
+            closure.clone(),
         ))
     }
 
-    pub fn class(name: &str) -> Self {
-        Self::Class(Class::new(name.to_string()))
+    pub fn class(name: &str, methods: HashMap<String, Object>) -> Self {
+        Self::Class(Class::new(name.to_string(), methods))
+    }
+    
+    pub fn bind(&self, obj: Instance) -> Result<Object> {
+        match self {
+            Object::Callable(callable) => {
+                let mut env = Environment::new(callable.get_closure());
+                env.define("self", Some(Object::Instance(obj)));
+                Ok(Object::Callable(Callable::new(callable.get_declaration(), Some(Rc::new(RefCell::new(env))))))
+            }
+            _ => panic!("Interpreter bug")
+        }
     }
 }
 

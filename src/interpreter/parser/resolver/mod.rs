@@ -25,10 +25,13 @@ use crate::interpreter::parser::error::{ParserError, ParserErrorType};
 use crate::interpreter::scanner::token::Token;
 use crate::interpreter::scanner::token::object::Object;
 use std::collections::HashMap;
+use crate::interpreter::ast::expr::self_expr::SelfExpr;
+use crate::interpreter::parser::resolver::FunctionType::Function;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum FunctionType {
     Function,
+    Method,
     None,
 }
 
@@ -194,6 +197,11 @@ impl ExprVisitor<Result<Object>> for Resolver<'_> {
         self.resolve_expr(value)?;
         Ok(Object::Nil)
     }
+
+    fn visit_self(&mut self, self_val: &SelfExpr) -> Result<Object> {
+        self.resolve_local(self_val, &self_val.get_name());
+        Ok(Object::Nil)
+    }
 }
 
 impl StmtVisitor<Result<Object>> for Resolver<'_> {
@@ -270,6 +278,17 @@ impl StmtVisitor<Result<Object>> for Resolver<'_> {
         let (name, methods) = class.extract();
         self.define(name);
         self.declare(name);
+
+        self.begin_scope();
+
+        self.stack.last_mut().unwrap().insert("self".into(), true);
+
+        for method in methods {
+            self.resolve_function(&method.clone(), FunctionType::Method)?
+        }
+
+        self.end_scope();
+        
         Ok(Object::Nil)
     }
 }

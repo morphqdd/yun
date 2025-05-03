@@ -9,6 +9,7 @@ use crate::interpreter::ast::expr::set::Set;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
 use downcast_rs::{Downcast, impl_downcast};
+use crate::interpreter::ast::expr::self_expr::SelfExpr;
 
 pub mod assignment;
 pub mod binary;
@@ -20,6 +21,7 @@ pub mod logical;
 pub mod set;
 pub mod unary;
 pub mod variable;
+pub mod self_expr;
 
 pub trait ExprVisitor<T> {
     fn visit_binary(&mut self, binary: &Binary<T>) -> T;
@@ -32,6 +34,7 @@ pub trait ExprVisitor<T> {
     fn visit_call(&mut self, call: &Call<T>) -> T;
     fn visit_get(&mut self, get: &Get<T>) -> T;
     fn visit_set(&mut self, set: &Set<T>) -> T;
+    fn visit_self(&mut self, self_val: &SelfExpr) -> T;
 }
 
 pub trait Expr<T>: Downcast + CloneExpr<T> {

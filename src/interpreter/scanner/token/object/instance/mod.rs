@@ -10,14 +10,14 @@ use std::rc::Rc;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Instance {
-    class: Class,
+    class: Rc<Class>,
     fields: Rc<RefCell<HashMap<String, Object>>>,
 }
 
 impl Instance {
     pub fn new(class: Class) -> Self {
         Self {
-            class,
+            class: Rc::new(class),
             fields: Default::default(),
         }
     }
@@ -26,6 +26,14 @@ impl Instance {
         if let Some(obj) = self.fields.borrow().get(name.get_lexeme()) {
             return Ok(obj.clone());
         }
+        
+        if let Some(method) = self.class.find_method(name.get_lexeme()) {
+            
+            method.bind(self.clone())?;
+            
+            return Ok(method)
+        }
+        
         Err(RuntimeError::new(
             name.clone(),
             RuntimeErrorType::UndefinedProperty(name.get_lexeme().to_string()),

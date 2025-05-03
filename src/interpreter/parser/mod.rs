@@ -26,6 +26,7 @@ use crate::interpreter::scanner::token::Token;
 use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use std::marker::PhantomData;
+use crate::interpreter::ast::expr::self_expr::SelfExpr;
 
 pub mod error;
 pub mod resolver;
@@ -483,6 +484,10 @@ where
                 ParserErrorType::ExpectedMatchingParens,
             )?;
             return Ok(b!(Grouping::new(expr)));
+        }
+        
+        if self._match(vec![TokenType::Slf]) {
+            return Ok(b!(SelfExpr::new(self.previous())))
         }
 
         Err(self

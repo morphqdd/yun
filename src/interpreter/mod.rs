@@ -47,6 +47,7 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
 use std::{fs, io};
+use crate::interpreter::ast::expr::self_expr::SelfExpr;
 
 pub struct Interpreter {
     env: Option<Rc<RefCell<Environment>>>,
@@ -59,8 +60,10 @@ impl Default for Interpreter {
         let mut globals = Environment::default();
         globals.define(
             "clock",
-            Some(Object::Callable(Callable::new(
+            Some(Object::Callable(Callable::build(
                 next_id(),
+                None,
+                None,
                 rc!(|_, _| -> Result<Object> {
                     Ok(Object::Number(
                         std::time::SystemTime::now()
@@ -76,8 +79,10 @@ impl Default for Interpreter {
 
         globals.define(
             "panic",
-            Some(Object::Callable(Callable::new(
+            Some(Object::Callable(Callable::build(
                 next_id(),
+                None,
+                None,
                 rc!(|_, args| Err(RuntimeErrorType::UserPanicWithMsg(args[0].clone()).into())),
                 rc!(|| 1),
                 rc!(|| "panic".into()),
@@ -86,8 +91,10 @@ impl Default for Interpreter {
 
         globals.define(
             "string",
-            Some(Object::Callable(Callable::new(
+            Some(Object::Callable(Callable::build(
                 next_id(),
+                None,
+                None,
                 rc!(|_, args| Ok(Object::String(args[0].clone().to_string()))),
                 rc!(|| 1),
                 rc!(|| "string".into()),
@@ -96,8 +103,10 @@ impl Default for Interpreter {
 
         globals.define(
             "exit",
-            Some(Object::Callable(Callable::new(
+            Some(Object::Callable(Callable::build(
                 next_id(),
+                None,
+                None,
                 rc!(|_, _| exit(0)),
                 rc!(|| 0),
                 rc!(|| "exit".into()),
@@ -106,8 +115,10 @@ impl Default for Interpreter {
 
         globals.define(
             "exitWithCode",
-            Some(Object::Callable(Callable::new(
+            Some(Object::Callable(Callable::build(
                 next_id(),
+                None,
+                None,
                 rc!(|_, args| exit(Into::<Result<i32>>::into(args[0].clone())?)),
                 rc!(|| 1),
                 rc!(|| "exitWithCode".into()),
@@ -417,6 +428,10 @@ impl ExprVisitor<Result<Object>> for Interpreter {
         }
         Err(RuntimeError::new(name.clone(), RuntimeErrorType::OnlyInstancesHaveProperties).into())
     }
+
+    fn visit_self(&mut self, self_val: &SelfExpr) -> Result<Object> {
+        self.look_up_variable(self_val.get_name(), self_val)
+    }
 }
 
 impl StmtVisitor<Result<Object>> for Interpreter {
@@ -525,7 +540,16 @@ impl StmtVisitor<Result<Object>> for Interpreter {
         let (name, methods) = class.extract();
         if let Some(env) = self.env.clone() {
             env.borrow_mut().define(name.get_lexeme(), None);
-            let class = Object::class(name.get_lexeme());
+            
+            let mut methods_ = HashMap::with_capacity(methods.len());
+            
+            for method in methods {
+                let name = method.get_name();
+                let func = Object::function(*method.clone(), self.env.clone());
+                methods_.insert(name.get_lexeme().to_string(), func);
+            }
+            
+            let class = Object::class(name.get_lexeme(), methods_);
             env.borrow_mut().assign(name, class)?;
             return Ok(Object::Nil);
         }

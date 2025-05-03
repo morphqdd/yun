@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::interpreter::scanner::token::object::callable::Callable;
 use crate::interpreter::scanner::token::object::instance::Instance;
 use crate::interpreter::scanner::token::object::Object;
@@ -10,14 +11,20 @@ use std::rc::Rc;
 pub struct Class {
     id: u64,
     name: String,
+    methods: HashMap<String, Object>,
 }
 
 impl Class {
-    pub fn new(name: String) -> Self {
+    pub fn new(name: String, methods: HashMap<String, Object>) -> Self {
         Self {
             id: next_id(),
-            name: name.clone(),
+            name,
+            methods,
         }
+    }
+    
+    pub fn find_method(&self, name: &str) -> Option<Object> {
+        self.methods.get(name).cloned()
     }
 }
 
@@ -30,8 +37,10 @@ impl Display for Class {
 impl From<Class> for Callable {
     fn from(value: Class) -> Self {
         let name = value.name.clone();
-        Callable::new(
+        Callable::build(
             value.id,
+            None,
+            None,
             rc!(move |_interpreter, _args| {
                 let instance = Instance::new(value.clone());
                 Ok(Object::Instance(instance))

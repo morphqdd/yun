@@ -1,6 +1,8 @@
-class Person {}
+class Person {
+    greet(name) {
+        print "Hello, " + name;
+    }
+}
 
 let person = Person();
-
-person.name = "Gregory";
-print person.name;
+person.greet("Gregory");
