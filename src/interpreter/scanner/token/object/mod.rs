@@ -1,18 +1,16 @@
 use crate::interpreter::ast::stmt::fun_stmt::Fun;
 use crate::interpreter::environment::Environment;
-use crate::interpreter::error::{RuntimeError, RuntimeErrorType};
+use crate::interpreter::error::RuntimeErrorType;
 use crate::interpreter::error::{InterpreterError, Result};
 use crate::interpreter::scanner::token::object::callable::Callable;
 use crate::interpreter::scanner::token::object::class::Class;
 use crate::interpreter::scanner::token::object::instance::Instance;
-use crate::rc;
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::ops::{Add, Div, Mul, Neg, Not, Sub};
 use std::rc::Rc;
-use crate::interpreter::parser::resolver::FunctionType::Function;
 
 pub mod callable;
 pub mod class;
@@ -44,25 +42,34 @@ impl Object {
         }
     }
 
-    pub fn function(stmt: Fun<Result<Object>>, closure: Option<Rc<RefCell<Environment>>>) -> Self {
+    pub fn function(
+        stmt: Fun<Result<Object>>,
+        closure: Option<Rc<RefCell<Environment>>>,
+        is_init: bool,
+    ) -> Self {
         Self::Callable(Callable::new(
             Some(Rc::new(RefCell::new(stmt))),
             closure.clone(),
+            is_init,
         ))
     }
 
     pub fn class(name: &str, methods: HashMap<String, Object>) -> Self {
         Self::Class(Class::new(name.to_string(), methods))
     }
-    
+
     pub fn bind(&self, obj: Instance) -> Result<Object> {
         match self {
             Object::Callable(callable) => {
                 let mut env = Environment::new(callable.get_closure());
                 env.define("self", Some(Object::Instance(obj)));
-                Ok(Object::Callable(Callable::new(callable.get_declaration(), Some(Rc::new(RefCell::new(env))))))
+                Ok(Object::Callable(Callable::new(
+                    callable.get_declaration(),
+                    Some(Rc::new(RefCell::new(env))),
+                    callable.is_init(),
+                )))
             }
-            _ => panic!("Interpreter bug")
+            _ => panic!("Interpreter bug"),
         }
     }
 }

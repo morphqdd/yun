@@ -12,6 +12,7 @@ use crate::interpreter::ast::expr::get::Get;
 use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::logical::Logical;
+use crate::interpreter::ast::expr::self_expr::SelfExpr;
 use crate::interpreter::ast::expr::set::Set;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
@@ -29,13 +30,13 @@ use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
 use crate::interpreter::environment::Environment;
 use crate::interpreter::error::Result;
 use crate::interpreter::error::{InterpreterError, RuntimeError, RuntimeErrorType};
-use crate::interpreter::parser::Parser;
 use crate::interpreter::parser::resolver::Resolver;
-use crate::interpreter::scanner::Scanner;
-use crate::interpreter::scanner::token::Token;
-use crate::interpreter::scanner::token::object::Object;
+use crate::interpreter::parser::Parser;
 use crate::interpreter::scanner::token::object::callable::Callable;
+use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
+use crate::interpreter::scanner::token::Token;
+use crate::interpreter::scanner::Scanner;
 use crate::interpreter::shell::Shell;
 use crate::rc;
 use crate::utils::next_id;
@@ -47,7 +48,6 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
 use std::{fs, io};
-use crate::interpreter::ast::expr::self_expr::SelfExpr;
 
 pub struct Interpreter {
     env: Option<Rc<RefCell<Environment>>>,
@@ -511,7 +511,7 @@ impl StmtVisitor<Result<Object>> for Interpreter {
 
     fn visit_fun(&mut self, stmt: &Fun<Result<Object>>) -> Result<Object> {
         let name = stmt.get_name();
-        let func = Object::function(stmt.clone(), self.env.clone());
+        let func = Object::function(stmt.clone(), self.env.clone(), false);
 
         match &self.env {
             None => {
@@ -540,15 +540,19 @@ impl StmtVisitor<Result<Object>> for Interpreter {
         let (name, methods) = class.extract();
         if let Some(env) = self.env.clone() {
             env.borrow_mut().define(name.get_lexeme(), None);
-            
+
             let mut methods_ = HashMap::with_capacity(methods.len());
-            
+
             for method in methods {
                 let name = method.get_name();
-                let func = Object::function(*method.clone(), self.env.clone());
+                let func = Object::function(
+                    *method.clone(),
+                    self.env.clone(),
+                    method.get_name().get_lexeme().eq("init"),
+                );
                 methods_.insert(name.get_lexeme().to_string(), func);
             }
-            
+
             let class = Object::class(name.get_lexeme(), methods_);
             env.borrow_mut().assign(name, class)?;
             return Ok(Object::Nil);
