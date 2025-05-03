@@ -1,0 +1,6 @@
+use "class";
+
+let jake = Person("Jake");
+jake.greet();
+
+hello();

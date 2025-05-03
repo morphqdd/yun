@@ -12,12 +12,14 @@ use crate::interpreter::ast::expr::variable::Variable;
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
 use crate::interpreter::ast::stmt::block::Block;
 use crate::interpreter::ast::stmt::class::Class;
+use crate::interpreter::ast::stmt::export_stmt::Export;
 use crate::interpreter::ast::stmt::fun_stmt::Fun;
 use crate::interpreter::ast::stmt::if_stmt::If;
 use crate::interpreter::ast::stmt::let_stmt::Let;
 use crate::interpreter::ast::stmt::print::Print;
 use crate::interpreter::ast::stmt::return_stmt::Return;
 use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
+use crate::interpreter::ast::stmt::use_stmt::Use;
 use crate::interpreter::ast::stmt::while_stmt::While;
 use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
 use crate::interpreter::error::Result;
@@ -323,5 +325,15 @@ impl StmtVisitor<Result<Object>> for Resolver<'_> {
         self.current_class = enclosing_ty;
 
         Ok(Object::Nil)
+    }
+
+    fn visit_export(&mut self, class: &Export<Result<Object>>) -> Result<Object> {
+        let (_, stmt) = class.extract();
+        self.resolve_stmt(stmt)
+    }
+
+    fn visit_use(&mut self, _stmt: &Use<Result<Object>>) -> Result<Object> {
+        let (_, expr) = _stmt.extract();
+        self.resolve_expr(expr)
     }
 }

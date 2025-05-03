@@ -46,6 +46,9 @@ impl Scanner {
         keywords.insert("super".into(), TokenType::Super);
         keywords.insert("self".into(), TokenType::Slf);
 
+        keywords.insert("use".into(), TokenType::Use);
+        keywords.insert("export".into(), TokenType::Export);
+
         Self {
             source: source.into(),
             tokens: vec![],

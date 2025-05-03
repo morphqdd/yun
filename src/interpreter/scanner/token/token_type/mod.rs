@@ -46,4 +46,6 @@ pub enum TokenType {
     While,
 
     Eof,
+    Use,
+    Export,
 }

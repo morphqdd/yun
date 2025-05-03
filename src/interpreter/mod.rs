@@ -1,6 +1,7 @@
 pub mod ast;
 pub mod environment;
 pub mod error;
+pub mod exporter;
 pub mod parser;
 pub mod scanner;
 pub mod shell;
@@ -19,17 +20,20 @@ use crate::interpreter::ast::expr::variable::Variable;
 use crate::interpreter::ast::expr::{CloneExpr, Expr, ExprVisitor};
 use crate::interpreter::ast::stmt::block::Block;
 use crate::interpreter::ast::stmt::class::Class;
+use crate::interpreter::ast::stmt::export_stmt::Export;
 use crate::interpreter::ast::stmt::fun_stmt::Fun;
 use crate::interpreter::ast::stmt::if_stmt::If;
 use crate::interpreter::ast::stmt::let_stmt::Let;
 use crate::interpreter::ast::stmt::print::Print;
 use crate::interpreter::ast::stmt::return_stmt::Return;
 use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
+use crate::interpreter::ast::stmt::use_stmt::Use;
 use crate::interpreter::ast::stmt::while_stmt::While;
 use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
 use crate::interpreter::environment::Environment;
 use crate::interpreter::error::Result;
 use crate::interpreter::error::{InterpreterError, RuntimeError, RuntimeErrorType};
+use crate::interpreter::exporter::Exporter;
 use crate::interpreter::parser::resolver::Resolver;
 use crate::interpreter::parser::Parser;
 use crate::interpreter::scanner::token::object::callable::Callable;
@@ -53,6 +57,7 @@ use std::time::Instant;
 use std::{fs, io};
 
 pub struct Interpreter {
+    path: PathBuf,
     env: Option<Rc<RefCell<Environment>>>,
     globals: Option<Rc<RefCell<Environment>>>,
     locals: HashMap<u64, usize>,
@@ -170,6 +175,7 @@ impl Default for Interpreter {
         let globals = Rc::new(RefCell::new(globals));
 
         Self {
+            path: PathBuf::new(),
             env: Some(globals.clone()),
             globals: Some(globals),
             locals: Default::default(),
@@ -202,7 +208,8 @@ impl Interpreter {
     }
 
     pub fn run_script(mut self, path: &PathBuf) -> Result<()> {
-        let code = fs::read_to_string(path).unwrap();
+        self.path = path.clone();
+        let code = fs::read_to_string(&self.path).unwrap();
         if let Err(err) = self.run(&code) {
             println!("{}", err);
             exit(65)
@@ -219,9 +226,12 @@ impl Interpreter {
     fn run(&mut self, code: &str) -> Result<Object> {
         let mut scanner = Scanner::new(code);
         let tokens = scanner.scan_tokens()?;
+        //println!("{:#?}", tokens);
 
         let mut parser = Parser::new(tokens);
         let ast = parser.parse()?;
+
+        let ast = Exporter::new(self.path.clone(), ast).resolve()?;
 
         Resolver::new(self).resolve(ast.iter().map(AsRef::as_ref).collect())?;
 
@@ -600,5 +610,16 @@ impl StmtVisitor<Result<Object>> for Interpreter {
             return Ok(Object::Nil);
         }
         Err(RuntimeError::new(name.clone(), RuntimeErrorType::BugEnvironmentNotInit).into())
+    }
+
+    fn visit_export(&mut self, class: &Export<Result<Object>>) -> Result<Object> {
+        let (_, stmt) = class.extract();
+        self.execute(stmt)?;
+        Ok(Object::Nil)
+    }
+
+    fn visit_use(&mut self, stmt: &Use<Result<Object>>) -> Result<Object> {
+        println!("{:?}", self.evaluate(stmt.extract().1)?);
+        Ok(Object::Nil)
     }
 }

@@ -1,5 +1,4 @@
 use crate::b;
-use crate::interpreter::ast::expr::Expr;
 use crate::interpreter::ast::expr::assignment::Assign;
 use crate::interpreter::ast::expr::binary::Binary;
 use crate::interpreter::ast::expr::call::Call;
@@ -7,26 +6,29 @@ use crate::interpreter::ast::expr::get::Get;
 use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::logical::Logical;
+use crate::interpreter::ast::expr::self_expr::SelfExpr;
 use crate::interpreter::ast::expr::set::Set;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
-use crate::interpreter::ast::stmt::Stmt;
+use crate::interpreter::ast::expr::Expr;
 use crate::interpreter::ast::stmt::block::Block;
 use crate::interpreter::ast::stmt::class::Class;
+use crate::interpreter::ast::stmt::export_stmt::Export;
 use crate::interpreter::ast::stmt::fun_stmt::Fun;
 use crate::interpreter::ast::stmt::if_stmt::If;
 use crate::interpreter::ast::stmt::let_stmt::Let;
 use crate::interpreter::ast::stmt::print::Print;
 use crate::interpreter::ast::stmt::return_stmt::Return;
 use crate::interpreter::ast::stmt::stmt_expr::StmtExpr;
+use crate::interpreter::ast::stmt::use_stmt::Use;
 use crate::interpreter::ast::stmt::while_stmt::While;
+use crate::interpreter::ast::stmt::Stmt;
 use crate::interpreter::error::Result;
 use crate::interpreter::parser::error::{ParserError, ParserErrorType};
-use crate::interpreter::scanner::token::Token;
 use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
+use crate::interpreter::scanner::token::Token;
 use std::marker::PhantomData;
-use crate::interpreter::ast::expr::self_expr::SelfExpr;
 
 pub mod error;
 pub mod resolver;
@@ -54,7 +56,7 @@ where
         let mut error_stack = vec![];
 
         while !self.is_at_end() {
-            match self.declaration() {
+            match self.export() {
                 Ok(stmt) => statements.push(stmt),
                 Err(err) => {
                     error_stack.push(err);
@@ -72,6 +74,25 @@ where
             .map(|err| err.to_string())
             .collect::<String>()
             .into())
+    }
+
+    fn export(&mut self) -> Result<Box<dyn Stmt<T>>> {
+        if self._match(vec![TokenType::Use]) {
+            return self.import();
+        }
+        if self._match(vec![TokenType::Export]) {
+            return Ok(b!(Export::new(self.previous(), self.declaration()?)));
+        }
+        self.declaration()
+    }
+
+    fn import(&mut self) -> Result<Box<dyn Stmt<T>>> {
+        let name = self.previous();
+        let expr = self.expression()?;
+
+        self.consume(TokenType::Semicolon, ParserErrorType::ExpectedSemicolon)?;
+
+        Ok(b!(Use::new(name, expr)))
     }
 
     fn declaration(&mut self) -> Result<Box<dyn Stmt<T>>> {
@@ -485,9 +506,9 @@ where
             )?;
             return Ok(b!(Grouping::new(expr)));
         }
-        
+
         if self._match(vec![TokenType::Slf]) {
-            return Ok(b!(SelfExpr::new(self.previous())))
+            return Ok(b!(SelfExpr::new(self.previous())));
         }
 
         Err(self

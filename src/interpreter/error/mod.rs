@@ -1,11 +1,13 @@
-use crate::interpreter::Interpreter;
+use crate::interpreter::exporter::error::ExporterError;
 use crate::interpreter::parser::error::ParserError;
 use crate::interpreter::scanner::error::ScannerError;
-use crate::interpreter::scanner::token::Token;
 use crate::interpreter::scanner::token::object::Object;
+use crate::interpreter::scanner::token::Token;
+use crate::interpreter::Interpreter;
 use std::fmt::{Display, Formatter};
 use std::num::ParseFloatError;
 use thiserror::Error;
+
 pub type Result<T> = std::result::Result<T, InterpreterError>;
 
 #[derive(Debug, Clone, Error)]
@@ -14,6 +16,8 @@ pub enum InterpreterError {
     ScannerError(ScannerError),
     #[error("{0}")]
     ParserError(ParserError),
+    #[error("{0}")]
+    ExporterError(ExporterError),
     #[error("{0}")]
     RuntimeError(RuntimeError),
     #[error("{0}")]

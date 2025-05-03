@@ -1,4 +1,4 @@
-class Person {
+export class Person {
     init(name) {
         self.name = name;
         return;
@@ -7,6 +7,10 @@ class Person {
     greet() {
         print "Hello, " + self.name;
     }
+}
+
+export fun hello() {
+    print "Hello";
 }
 
 let person = Person("Gregory");
