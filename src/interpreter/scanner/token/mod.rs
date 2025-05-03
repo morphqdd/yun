@@ -31,6 +31,16 @@ impl Token {
         }
     }
 
+    pub fn builtin_void(token_type: TokenType, lexeme: &str, literal: Option<Object>) -> Self {
+        Self {
+            token_type,
+            lexeme: lexeme.into(),
+            literal,
+            line: 0,
+            pos_in_line: 0,
+        }
+    }
+
     pub fn get_lexeme(&self) -> &str {
         &self.lexeme
     }

@@ -1,0 +1,12 @@
+class Timer {
+    init() {
+        self.instant = instant();
+    }
+
+    elapsed() {
+        return elapsed(self.instant);
+    }
+}
+
+let timer = Timer();
+print timer.elapsed();

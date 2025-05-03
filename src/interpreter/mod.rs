@@ -33,13 +33,15 @@ use crate::interpreter::error::{InterpreterError, RuntimeError, RuntimeErrorType
 use crate::interpreter::parser::resolver::Resolver;
 use crate::interpreter::parser::Parser;
 use crate::interpreter::scanner::token::object::callable::Callable;
+use crate::interpreter::scanner::token::object::native_object::NativeObject;
 use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use crate::interpreter::scanner::Scanner;
 use crate::interpreter::shell::Shell;
-use crate::rc;
 use crate::utils::next_id;
+use crate::{b, rc};
+use downcast_rs::Downcast;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::Write;
@@ -47,6 +49,7 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
+use std::time::Instant;
 use std::{fs, io};
 
 pub struct Interpreter {
@@ -58,6 +61,7 @@ pub struct Interpreter {
 impl Default for Interpreter {
     fn default() -> Self {
         let mut globals = Environment::default();
+
         globals.define(
             "clock",
             Some(Object::Callable(Callable::build(
@@ -126,6 +130,39 @@ impl Default for Interpreter {
                 rc!(|_, args| exit(Into::<Result<i32>>::into(args[0].clone())?)),
                 rc!(|| 1),
                 rc!(|| "exitWithCode".into()),
+                false,
+            ))),
+        );
+
+        globals.define(
+            "instant",
+            Some(Object::Callable(Callable::build(
+                next_id(),
+                None,
+                None,
+                rc!(|_, _| Ok(Object::NativeObject(NativeObject::new(b!(Instant::now()))))),
+                rc!(|| 0),
+                rc!(|| "instant".into()),
+                false,
+            ))),
+        );
+
+        globals.define(
+            "elapsed",
+            Some(Object::Callable(Callable::build(
+                next_id(),
+                None,
+                None,
+                rc!(|_, args| {
+                    if let Object::NativeObject(native) = args[0].clone() {
+                        if let Some(instant) = native.extract().downcast_ref::<Instant>() {
+                            return Ok(Object::Number(instant.elapsed().as_micros() as f64));
+                        }
+                    }
+                    Ok(Object::Nil)
+                }),
+                rc!(|| 1),
+                rc!(|| "elapsed".into()),
                 false,
             ))),
         );

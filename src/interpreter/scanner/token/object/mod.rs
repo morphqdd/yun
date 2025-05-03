@@ -5,6 +5,8 @@ use crate::interpreter::error::{InterpreterError, Result};
 use crate::interpreter::scanner::token::object::callable::Callable;
 use crate::interpreter::scanner::token::object::class::Class;
 use crate::interpreter::scanner::token::object::instance::Instance;
+use crate::interpreter::scanner::token::object::native_object::NativeObject;
+use std::any::Any;
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -15,6 +17,7 @@ use std::rc::Rc;
 pub mod callable;
 pub mod class;
 pub mod instance;
+pub mod native_object;
 
 #[derive(Debug, Clone)]
 pub enum Object {
@@ -24,6 +27,7 @@ pub enum Object {
     Callable(Callable),
     Class(Class),
     Instance(Instance),
+    NativeObject(NativeObject),
     Nil,
     Void,
 }
@@ -39,6 +43,7 @@ impl Object {
             Object::Callable { .. } => "<callable>".into(),
             Object::Class(class) => class.to_string(),
             Object::Instance(instance) => instance.to_string(),
+            Object::NativeObject(_) => "<native object>".into(),
         }
     }
 
@@ -193,6 +198,7 @@ impl Display for Object {
             Object::Callable(callable) => write!(f, "{}", callable),
             Object::Class(class) => write!(f, "{}", class),
             Object::Instance(instance) => write!(f, "{}", instance),
+            Object::NativeObject(_) => write!(f, "<native object>"),
         }
     }
 }
