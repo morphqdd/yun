@@ -1,7 +1,7 @@
 use crate::interpreter::error::Result;
 use crate::interpreter::error::{RuntimeError, RuntimeErrorType};
-use crate::interpreter::scanner::token::object::class::Class;
-use crate::interpreter::scanner::token::object::Object;
+use crate::interpreter::object::class::Class;
+use crate::interpreter::object::Object;
 use crate::interpreter::scanner::token::Token;
 use std::cell::RefCell;
 use std::collections::HashMap;

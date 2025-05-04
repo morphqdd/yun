@@ -2,6 +2,7 @@ pub mod ast;
 pub mod environment;
 pub mod error;
 pub mod exporter;
+pub mod object;
 pub mod parser;
 pub mod scanner;
 pub mod shell;
@@ -36,25 +37,25 @@ use crate::interpreter::error::{InterpreterError, RuntimeError, RuntimeErrorType
 use crate::interpreter::exporter::Exporter;
 use crate::interpreter::parser::resolver::Resolver;
 use crate::interpreter::parser::Parser;
-use crate::interpreter::scanner::token::object::callable::Callable;
-use crate::interpreter::scanner::token::object::native_object::NativeObject;
-use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use crate::interpreter::scanner::Scanner;
 use crate::interpreter::shell::Shell;
 use crate::utils::next_id;
 use crate::{b, rc};
-use downcast_rs::Downcast;
+use object::callable::Callable;
+use object::native_object::NativeObject;
+use object::Object;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::Write;
 use std::ops::Deref;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::rc::Rc;
 use std::time::Instant;
 use std::{fs, io};
+use crate::interpreter::ast::expr::superclass::Super;
 
 pub struct Interpreter {
     path: PathBuf,
@@ -207,8 +208,8 @@ impl Interpreter {
         }
     }
 
-    pub fn run_script(mut self, path: &PathBuf) -> Result<()> {
-        self.path = path.clone();
+    pub fn run_script(mut self, path: &Path) -> Result<()> {
+        self.path = path.to_path_buf();
         let code = fs::read_to_string(&self.path).unwrap();
         if let Err(err) = self.run(&code) {
             println!("{}", err);
@@ -441,8 +442,8 @@ impl ExprVisitor<Result<Object>> for Interpreter {
             args.push(self.evaluate(arg)?);
         }
 
-        let callable = match callable {
-            Object::Class(class) => Object::Callable(class.into()),
+        let callable = match callable.clone_into_rc() {
+            Object::Class(class) => Object::Callable((*class).into()),
             _ => callable,
         };
 
@@ -483,6 +484,28 @@ impl ExprVisitor<Result<Object>> for Interpreter {
 
     fn visit_self(&mut self, self_val: &SelfExpr) -> Result<Object> {
         self.look_up_variable(self_val.get_name(), self_val)
+    }
+
+    fn visit_super(&mut self, super_val: &Super) -> Result<Object> {
+        let (keyword, method_name) = super_val.extract();
+        let distance = self.locals.get(&<Super as Expr<Result<Object>>>::id(super_val)).unwrap();
+        let superclass = Environment::get_at(self.env.clone(), *distance, &keyword)?;
+        let instance = Environment::get_at(self.env.clone(), 1, &Token::builtin_void(TokenType::Slf, "self", None))?;
+
+        let method = match superclass.inner() {
+            Object::Class(class) => {
+                class.find_method(method_name.get_lexeme())
+            }
+            _ => panic!("Interpreter bug!")
+        };
+
+        if let Some(method) = method {
+            if let Object::Instance(instance) = instance {
+                return method.bind(instance);
+            }
+        }
+
+        Err(RuntimeError::new(method_name.clone(), RuntimeErrorType::UndefinedProperty(method_name.get_lexeme().into())).into())
     }
 }
 
@@ -589,24 +612,59 @@ impl StmtVisitor<Result<Object>> for Interpreter {
     }
 
     fn visit_class(&mut self, class: &Class<Result<Object>>) -> Result<Object> {
-        let (name, methods) = class.extract();
+        let (name, methods, superclass) = class.extract();
         if let Some(env) = self.env.clone() {
-            env.borrow_mut().define(name.get_lexeme(), None);
+            
 
+            let superclass = if let Some(superclass) = superclass {
+                if let Object::Rc(rc) =  self.evaluate(superclass)? {
+                    if let Object::Class(_) = rc.deref() {
+                        Some(Object::Rc(rc))
+                    } else {
+                        return Err(RuntimeError::new(
+                            superclass.get_token(),
+                            RuntimeErrorType::SuperclassMustBeClass,
+                        )
+                            .into());
+                    }
+                } else {
+                    return Err(RuntimeError::new(
+                        superclass.get_token(),
+                        RuntimeErrorType::SuperclassMustBeClass,
+                    )
+                        .into());
+                }
+                
+            } else {
+                None
+            };
+            
+            if let Some(superclass) = superclass.clone() {
+                self.env = Some(Rc::new(RefCell::new(Environment::new(self.env.clone()))));
+                self.env.clone().unwrap().borrow_mut().define("super", Some(superclass));
+            }
+
+            env.borrow_mut().define(name.get_lexeme(), None);
+            
             let mut methods_ = HashMap::with_capacity(methods.len());
 
             for method in methods {
                 let name = method.get_name();
                 let func = Object::function(
-                    *method.clone(),
+                    method.clone(),
                     self.env.clone(),
                     method.get_name().get_lexeme().eq("init"),
                 );
                 methods_.insert(name.get_lexeme().to_string(), func);
             }
 
-            let class = Object::class(name.get_lexeme(), methods_);
-            env.borrow_mut().assign(name, class)?;
+            let class = Object::class(name.get_lexeme(), methods_, superclass.clone());
+
+            if superclass.is_some() {
+                self.env = self.env.clone().unwrap().borrow().get_enclosing();
+            }
+
+            env.borrow_mut().assign(name, Object::Rc(rc!(class)))?;
             return Ok(Object::Nil);
         }
         Err(RuntimeError::new(name.clone(), RuntimeErrorType::BugEnvironmentNotInit).into())
@@ -618,8 +676,7 @@ impl StmtVisitor<Result<Object>> for Interpreter {
         Ok(Object::Nil)
     }
 
-    fn visit_use(&mut self, stmt: &Use<Result<Object>>) -> Result<Object> {
-        println!("{:?}", self.evaluate(stmt.extract().1)?);
+    fn visit_use(&mut self, _stmt: &Use<Result<Object>>) -> Result<Object> {
         Ok(Object::Nil)
     }
 }

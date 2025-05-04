@@ -1,8 +1,8 @@
 pub mod token;
 
 use crate::interpreter::error::Result;
+use crate::interpreter::object::Object;
 use crate::interpreter::scanner::error::{ScannerError, ScannerErrorType};
-use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use std::collections::HashMap;

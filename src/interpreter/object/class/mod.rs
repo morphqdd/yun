@@ -1,10 +1,11 @@
-use crate::interpreter::scanner::token::object::callable::Callable;
-use crate::interpreter::scanner::token::object::instance::Instance;
-use crate::interpreter::scanner::token::object::Object;
+use crate::interpreter::object::callable::Callable;
+use crate::interpreter::object::instance::Instance;
+use crate::interpreter::object::Object;
 use crate::rc;
 use crate::utils::next_id;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
+use std::ops::Deref;
 use std::rc::Rc;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -12,19 +13,34 @@ pub struct Class {
     id: u64,
     name: Rc<String>,
     methods: Rc<HashMap<String, Object>>,
+    superclass: Option<Object>,
 }
 
 impl Class {
-    pub fn new(name: String, methods: HashMap<String, Object>) -> Self {
+    pub fn new(
+        name: String,
+        methods: HashMap<String, Object>,
+        superclass: Option<Object>,
+    ) -> Self {
         Self {
             id: next_id(),
             name: rc!(name),
             methods: rc!(methods),
+            superclass,
         }
     }
 
     pub fn find_method(&self, name: &str) -> Option<Object> {
-        self.methods.get(name).cloned()
+        if let Some(obj) = self.methods.get(name).cloned() {
+            Some(obj)
+        } else if let Some(superclass) = self.superclass.clone() {
+            match superclass.inner() {
+                Object::Class(class) => class.find_method(name),
+                _ => panic!("Interpreter bug!")
+            }
+        } else {
+            None
+        }
     }
 }
 

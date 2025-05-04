@@ -1,8 +1,7 @@
-use crate::interpreter::scanner::token::object::Object;
+use crate::interpreter::object::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use std::fmt::{Display, Formatter};
 
-pub mod object;
 pub mod token_type;
 
 #[derive(Debug, Clone, PartialEq)]

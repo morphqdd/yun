@@ -1,7 +1,7 @@
 use crate::interpreter::exporter::error::ExporterError;
+use crate::interpreter::object::Object;
 use crate::interpreter::parser::error::ParserError;
 use crate::interpreter::scanner::error::ScannerError;
-use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::Token;
 use crate::interpreter::Interpreter;
 use std::fmt::{Display, Formatter};
@@ -86,6 +86,7 @@ pub enum RuntimeErrorType {
     CantToNum(String),
     OnlyInstancesHaveProperties,
     UndefinedProperty(String),
+    SuperclassMustBeClass,
 }
 
 impl Display for RuntimeErrorType {
@@ -127,6 +128,7 @@ impl Display for RuntimeErrorType {
                 write!(f, "Only instances have properties")
             }
             RuntimeErrorType::UndefinedProperty(name) => write!(f, "Undefined property '{}'", name),
+            RuntimeErrorType::SuperclassMustBeClass => write!(f, "Superclass must be class"),
         }
     }
 }

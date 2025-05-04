@@ -1,0 +1,27 @@
+class Person {
+    init(name) {
+        self.name = name;
+    }
+
+    greet() {
+        print "Hello, " + self.name;
+    }
+}
+
+class Worker < Person {
+    init(name) {
+        super.init(name);
+    }
+
+    work() {
+        print self.name + " is working...";
+    }
+
+    greet() {
+        super.greet();
+    }
+}
+
+let worker = Worker("Gregory");
+worker.greet();
+worker.work();

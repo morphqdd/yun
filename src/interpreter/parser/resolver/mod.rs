@@ -7,6 +7,7 @@ use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::logical::Logical;
 use crate::interpreter::ast::expr::self_expr::SelfExpr;
 use crate::interpreter::ast::expr::set::Set;
+use crate::interpreter::ast::expr::superclass::Super;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
@@ -23,8 +24,8 @@ use crate::interpreter::ast::stmt::use_stmt::Use;
 use crate::interpreter::ast::stmt::while_stmt::While;
 use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
 use crate::interpreter::error::Result;
+use crate::interpreter::object::Object;
 use crate::interpreter::parser::error::{ParserError, ParserErrorType};
-use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::Token;
 use crate::interpreter::Interpreter;
 use std::collections::HashMap;
@@ -40,6 +41,7 @@ pub enum FunctionType {
 #[derive(Clone, Copy, PartialEq)]
 pub enum ClassType {
     Class,
+    SubClass,
     None,
 }
 
@@ -219,6 +221,16 @@ impl ExprVisitor<Result<Object>> for Resolver<'_> {
         self.resolve_local(self_val, &self_val.get_name());
         Ok(Object::Nil)
     }
+
+    fn visit_super(&mut self, super_val: &Super) -> Result<Object> {
+        if self.current_class == ClassType::None {
+            return Err(ParserError::new(super_val.extract().0, ParserErrorType::CantUseSuperOutsideOfClass).into())
+        } else if self.current_class != ClassType::SubClass {
+            return Err(ParserError::new(super_val.extract().0, ParserErrorType::CantUseSuperInClassWithoutSuperClasses).into())
+        }
+        self.resolve_local(super_val, &super_val.extract().0);
+        Ok(Object::Nil)
+    }
 }
 
 impl StmtVisitor<Result<Object>> for Resolver<'_> {
@@ -299,12 +311,25 @@ impl StmtVisitor<Result<Object>> for Resolver<'_> {
     }
 
     fn visit_class(&mut self, class: &Class<Result<Object>>) -> Result<Object> {
-        let (name, methods) = class.extract();
+        let (name, methods, super_class) = class.extract();
         let enclosing_ty = self.current_class;
         self.current_class = ClassType::Class;
 
         self.define(name);
         self.declare(name);
+
+        if let Some(super_class) = super_class {
+            let s_name = super_class.get_token();
+            if s_name.get_lexeme().eq(name.get_lexeme()) {
+                return Err(ParserError::new(s_name, ParserErrorType::CantInheritItSelf).into());
+            }
+
+            self.current_class = ClassType::SubClass;
+            self.resolve_expr(super_class)?;
+
+            self.begin_scope();
+            self.stack.last_mut().unwrap().insert("super".into(), true);
+        }
 
         self.begin_scope();
 
@@ -321,6 +346,10 @@ impl StmtVisitor<Result<Object>> for Resolver<'_> {
         }
 
         self.end_scope();
+
+        if super_class.is_some() {
+            self.end_scope();
+        }
 
         self.current_class = enclosing_ty;
 

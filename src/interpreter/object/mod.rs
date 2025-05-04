@@ -2,17 +2,17 @@ use crate::interpreter::ast::stmt::fun_stmt::Fun;
 use crate::interpreter::environment::Environment;
 use crate::interpreter::error::RuntimeErrorType;
 use crate::interpreter::error::{InterpreterError, Result};
-use crate::interpreter::scanner::token::object::callable::Callable;
-use crate::interpreter::scanner::token::object::class::Class;
-use crate::interpreter::scanner::token::object::instance::Instance;
-use crate::interpreter::scanner::token::object::native_object::NativeObject;
-use std::any::Any;
+use crate::interpreter::object::callable::Callable;
+use crate::interpreter::object::class::Class;
+use crate::interpreter::object::instance::Instance;
+use crate::interpreter::object::native_object::NativeObject;
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::Display;
-use std::ops::{Add, Div, Mul, Neg, Not, Sub};
+use std::ops::{Add, Deref, Div, Mul, Neg, Not, Sub};
 use std::rc::Rc;
+use crate::b;
 
 pub mod callable;
 pub mod class;
@@ -25,9 +25,10 @@ pub enum Object {
     Number(f64),
     Bool(bool),
     Callable(Callable),
-    Class(Class),
+    Class(Box<Class>),
     Instance(Instance),
     NativeObject(NativeObject),
+    Rc(Rc<Object>),
     Nil,
     Void,
 }
@@ -44,6 +45,7 @@ impl Object {
             Object::Class(class) => class.to_string(),
             Object::Instance(instance) => instance.to_string(),
             Object::NativeObject(_) => "<native object>".into(),
+            Object::Rc(obj) => obj.get_type(),
         }
     }
 
@@ -59,8 +61,12 @@ impl Object {
         ))
     }
 
-    pub fn class(name: &str, methods: HashMap<String, Object>) -> Self {
-        Self::Class(Class::new(name.to_string(), methods))
+    pub fn class(
+        name: &str,
+        methods: HashMap<String, Object>,
+        superclass: Option<Object>,
+    ) -> Self {
+        Self::Class(b!(Class::new(name.to_string(), methods, superclass)))
     }
 
     pub fn bind(&self, obj: Instance) -> Result<Object> {
@@ -77,6 +83,20 @@ impl Object {
             _ => panic!("Interpreter bug"),
         }
     }
+    
+    pub fn clone_into_rc(&self) -> Self {
+        match self {
+            Object::Rc(obj) => obj.clone().deref().clone(),
+            _ => self.clone()
+        }
+    }
+    
+    pub fn inner(&self) -> &Self {
+        match self {
+            Object::Rc(rc) => rc.inner(),
+            _ => self,
+        }
+    } 
 }
 
 impl Neg for Object {
@@ -85,6 +105,7 @@ impl Neg for Object {
     fn neg(self) -> Self::Output {
         match self {
             Object::Number(n) => Ok(Object::Number(-n)),
+            Object::Rc(rc) => -rc.clone_into_rc(),
             _ => Err(RuntimeErrorType::CannotNegateType(self.get_type()).into()),
         }
     }
@@ -123,6 +144,8 @@ impl Add for Object {
         match (&self, &rhs) {
             (Object::Number(a), Object::Number(b)) => Ok(Object::Number(a + b)),
             (Object::String(a), Object::String(b)) => Ok(Object::String(a.to_owned() + b)),
+            (Object::Rc(rc), _) => rc.clone_into_rc() + rhs,
+            (_, Object::Rc(rc)) => self + rc.clone_into_rc(),
             _ => Err(RuntimeErrorType::CannotAddTypes(self.get_type(), rhs.get_type()).into()),
         }
     }
@@ -134,6 +157,8 @@ impl Sub for Object {
     fn sub(self, rhs: Self) -> Self::Output {
         match (&self, &rhs) {
             (Object::Number(a), Object::Number(b)) => Ok(Object::Number(a - b)),
+            (Object::Rc(rc), _) => rc.clone_into_rc() - rhs,
+            (_, Object::Rc(rc)) => self - rc.clone_into_rc(),
             _ => Err(RuntimeErrorType::CannotSubtractTypes(self.get_type(), rhs.get_type()).into()),
         }
     }
@@ -145,6 +170,8 @@ impl Mul for Object {
     fn mul(self, rhs: Self) -> Self::Output {
         match (&self, &rhs) {
             (Object::Number(a), Object::Number(b)) => Ok(Object::Number(a * b)),
+            (Object::Rc(rc), _) => rc.clone_into_rc() * rhs,
+            (_, Object::Rc(rc)) => self * rc.clone_into_rc(),
             _ => Err(RuntimeErrorType::CannotMultiplyTypes(self.get_type(), rhs.get_type()).into()),
         }
     }
@@ -156,6 +183,8 @@ impl Div for Object {
     fn div(self, rhs: Self) -> Self::Output {
         match (&self, &rhs) {
             (Object::Number(a), Object::Number(b)) => Ok(Object::Number(a / b)),
+            (Object::Rc(rc), _) => rc.clone_into_rc() / rhs,
+            (_, Object::Rc(rc)) => self / rc.clone_into_rc(),
             _ => Err(RuntimeErrorType::CannotDivideTypes(self.get_type(), rhs.get_type()).into()),
         }
     }
@@ -170,6 +199,8 @@ impl PartialEq<Self> for Object {
             (Object::Nil, Object::Nil) => true,
             (Object::Void, Object::Void) => true,
             (Object::Callable(callable), Object::Callable(callable2)) => callable == callable2,
+            (Object::Rc(rc), _) => &rc.clone_into_rc() == other,
+            (_, Object::Rc(rc)) => self == &rc.clone_into_rc(),
             _ => false,
         }
     }
@@ -181,6 +212,8 @@ impl PartialOrd<Self> for Object {
             (Object::Number(a), Object::Number(b)) => a.partial_cmp(b),
             (Object::String(a), Object::String(b)) => a.partial_cmp(b),
             (Object::Bool(a), Object::Bool(b)) => a.partial_cmp(b),
+            (Object::Rc(rc), _) => rc.clone_into_rc().partial_cmp(other),
+            (_, Object::Rc(rc)) => self.partial_cmp(&rc.clone_into_rc()),
             (Object::Nil, Object::Nil) => None,
             _ => Some(Ordering::Equal),
         }
@@ -199,6 +232,7 @@ impl Display for Object {
             Object::Class(class) => write!(f, "{}", class),
             Object::Instance(instance) => write!(f, "{}", instance),
             Object::NativeObject(_) => write!(f, "<native object>"),
+            Object::Rc(rc) => write!(f, "{}", rc), 
         }
     }
 }

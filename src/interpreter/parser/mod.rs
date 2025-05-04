@@ -8,6 +8,7 @@ use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::logical::Logical;
 use crate::interpreter::ast::expr::self_expr::SelfExpr;
 use crate::interpreter::ast::expr::set::Set;
+use crate::interpreter::ast::expr::superclass::Super;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
 use crate::interpreter::ast::expr::Expr;
@@ -24,8 +25,8 @@ use crate::interpreter::ast::stmt::use_stmt::Use;
 use crate::interpreter::ast::stmt::while_stmt::While;
 use crate::interpreter::ast::stmt::Stmt;
 use crate::interpreter::error::Result;
+use crate::interpreter::object::Object;
 use crate::interpreter::parser::error::{ParserError, ParserErrorType};
-use crate::interpreter::scanner::token::object::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use std::marker::PhantomData;
@@ -117,6 +118,15 @@ where
             ParserErrorType::ExpectedIdentAfterClassDecl,
         )?;
 
+        let mut super_class = None;
+        if self._match(vec![TokenType::Less]) {
+            self.consume(
+                TokenType::Identifier,
+                ParserErrorType::ExpectedSuperClassIdent,
+            )?;
+            super_class = Some(Variable::new(self.previous()));
+        }
+
         self.consume(
             TokenType::LeftBrace,
             ParserErrorType::ExpectedLeftBraceBeforeBody,
@@ -125,7 +135,7 @@ where
         let mut methods = vec![];
         while !self.check(TokenType::RightBrace) && !self.is_at_end() {
             match self.fun_declaration()?.downcast::<Fun<T>>() {
-                Ok(func) => methods.push(func),
+                Ok(func) => methods.push(*func),
                 Err(_) => {
                     return Err(ParserError::new(self.previous(), ParserErrorType::NotAFunc).into());
                 }
@@ -137,7 +147,7 @@ where
             ParserErrorType::ExpectedMatchingBrace,
         )?;
 
-        Ok(b!(Class::new(name, methods)))
+        Ok(b!(Class::new(name, methods, super_class)))
     }
 
     fn fun_declaration(&mut self) -> Result<Box<dyn Stmt<T>>> {
@@ -509,6 +519,17 @@ where
 
         if self._match(vec![TokenType::Slf]) {
             return Ok(b!(SelfExpr::new(self.previous())));
+        }
+
+        if self._match(vec![TokenType::Super]) {
+            let keyword = self.previous();
+            self.consume(TokenType::Dot, ParserErrorType::ExpectedDotAfterSuper)?;
+            let method = self.consume(
+                TokenType::Identifier,
+                ParserErrorType::ExpectedMethodAfterDot,
+            )?;
+
+            return Ok(b!(Super::new(keyword, method)));
         }
 
         Err(self

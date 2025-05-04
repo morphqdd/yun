@@ -1,6 +1,6 @@
 use crate::interpreter::error::Result;
 use crate::interpreter::error::{RuntimeError, RuntimeErrorType};
-use crate::interpreter::scanner::token::object::Object;
+use crate::interpreter::object::Object;
 use crate::interpreter::scanner::token::Token;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -60,7 +60,10 @@ impl Environment {
         Err(RuntimeError::new(name.clone(), RuntimeErrorType::BugEnvironmentNotInit).into())
     }
 
-    fn ancestor(env: Option<Rc<RefCell<Self>>>, distance: usize) -> Option<Rc<RefCell<Environment>>> {
+    fn ancestor(
+        env: Option<Rc<RefCell<Self>>>,
+        distance: usize,
+    ) -> Option<Rc<RefCell<Environment>>> {
         let mut env = env.clone();
         for _ in 0..distance {
             if let Some(env_) = env.clone() {
@@ -88,11 +91,23 @@ impl Environment {
         .into())
     }
 
-    pub fn assign_at(env: Option<Rc<RefCell<Self>>>, distance: usize, name: &Token, value: Object) -> Result<Object> {
+    pub fn assign_at(
+        env: Option<Rc<RefCell<Self>>>,
+        distance: usize,
+        name: &Token,
+        value: Object,
+    ) -> Result<Object> {
         if let Some(environment) = Environment::ancestor(env, distance) {
-            environment.borrow_mut().values.insert(name.get_lexeme().to_string(), Some(value.clone()));
+            environment
+                .borrow_mut()
+                .values
+                .insert(name.get_lexeme().to_string(), Some(value.clone()));
             return Ok(value);
         }
         Err(RuntimeError::new(name.clone(), RuntimeErrorType::BugEnvironmentNotInit).into())
+    }
+    
+    pub fn get_enclosing(&self) -> Option<Rc<RefCell<Environment>>> {
+        self.enclosing.clone()
     }
 }

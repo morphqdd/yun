@@ -1,7 +1,7 @@
 use crate::interpreter::ast::stmt::fun_stmt::Fun;
 use crate::interpreter::environment::Environment;
 use crate::interpreter::error::{InterpreterError, Result};
-use crate::interpreter::scanner::token::object::Object;
+use crate::interpreter::object::Object;
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use crate::interpreter::Interpreter;

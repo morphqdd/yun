@@ -5,11 +5,12 @@ use crate::interpreter::ast::expr::get::Get;
 use crate::interpreter::ast::expr::grouping::Grouping;
 use crate::interpreter::ast::expr::literal::Literal;
 use crate::interpreter::ast::expr::logical::Logical;
+use crate::interpreter::ast::expr::self_expr::SelfExpr;
 use crate::interpreter::ast::expr::set::Set;
+use crate::interpreter::ast::expr::superclass::Super;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
-use downcast_rs::{Downcast, impl_downcast};
-use crate::interpreter::ast::expr::self_expr::SelfExpr;
+use downcast_rs::{impl_downcast, Downcast};
 
 pub mod assignment;
 pub mod binary;
@@ -18,10 +19,11 @@ pub mod get;
 pub mod grouping;
 pub mod literal;
 pub mod logical;
+pub mod self_expr;
 pub mod set;
+pub mod superclass;
 pub mod unary;
 pub mod variable;
-pub mod self_expr;
 
 pub trait ExprVisitor<T> {
     fn visit_binary(&mut self, binary: &Binary<T>) -> T;
@@ -35,6 +37,7 @@ pub trait ExprVisitor<T> {
     fn visit_get(&mut self, get: &Get<T>) -> T;
     fn visit_set(&mut self, set: &Set<T>) -> T;
     fn visit_self(&mut self, self_val: &SelfExpr) -> T;
+    fn visit_super(&mut self, super_val: &Super) -> T;
 }
 
 pub trait Expr<T>: Downcast + CloneExpr<T> {

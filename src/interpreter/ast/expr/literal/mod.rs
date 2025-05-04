@@ -1,5 +1,5 @@
 use crate::interpreter::ast::expr::{Expr, ExprVisitor};
-use crate::interpreter::scanner::token::object::Object;
+use crate::interpreter::object::Object;
 use crate::utils::next_id;
 use std::fmt::Display;
 

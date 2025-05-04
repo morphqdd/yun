@@ -2,6 +2,8 @@ use crate::interpreter::ast::stmt::{Stmt, StmtVisitor};
 use crate::interpreter::scanner::token::Token;
 use crate::utils::next_id;
 
+type Extract<T> = (u64, Token, Vec<Token>, Vec<Box<dyn Stmt<T>>>);
+
 #[derive(Clone)]
 pub struct Fun<T: 'static> {
     id: u64,
@@ -20,7 +22,7 @@ impl<T> Fun<T> {
         }
     }
 
-    pub fn extract(self) -> (u64, Token, Vec<Token>, Vec<Box<dyn Stmt<T>>>) {
+    pub fn extract(self) -> Extract<T> {
         (self.id, self.name, self.params, self.body)
     }
 

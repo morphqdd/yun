@@ -61,6 +61,12 @@ pub enum ParserErrorType {
     ExpectedPropertyAfterDot,
     CantUseSelfOutsideClass,
     CantReturnFromInitializer,
+    ExpectedSuperClassIdent,
+    CantInheritItSelf,
+    ExpectedMethodAfterDot,
+    ExpectedDotAfterSuper,
+    CantUseSuperOutsideOfClass,
+    CantUseSuperInClassWithoutSuperClasses,
 }
 
 impl Display for ParserErrorType {
@@ -125,6 +131,14 @@ impl Display for ParserErrorType {
             ParserErrorType::CantReturnFromInitializer => {
                 write!(f, "Can't return from initializer!")
             }
+            ParserErrorType::ExpectedSuperClassIdent => {
+                write!(f, "Expected superclass identifier!")
+            }
+            ParserErrorType::CantInheritItSelf => write!(f, "A class can't inherit from itself!"),
+            ParserErrorType::ExpectedMethodAfterDot => write!(f, "Expected method after '.'!"),
+            ParserErrorType::ExpectedDotAfterSuper => write!(f, "Expected '.'!"),
+            ParserErrorType::CantUseSuperOutsideOfClass => write!(f, "Can't use 'super' outside of a class!"),
+            ParserErrorType::CantUseSuperInClassWithoutSuperClasses => write!(f, "Can't use 'super' in class without superclasses!"),
         }
     }
 }
