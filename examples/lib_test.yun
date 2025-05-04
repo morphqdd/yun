@@ -1,0 +1,8 @@
+use "lib/math";
+use "inherit";
+
+print square(10);
+
+let worker = Worker("Luci");
+worker.greet();
+worker.work();

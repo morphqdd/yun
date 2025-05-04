@@ -29,6 +29,7 @@ use crate::interpreter::parser::error::{ParserError, ParserErrorType};
 use crate::interpreter::scanner::token::Token;
 use crate::interpreter::Interpreter;
 use std::collections::HashMap;
+use crate::interpreter::ast::expr::list::List;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum FunctionType {
@@ -229,6 +230,14 @@ impl ExprVisitor<Result<Object>> for Resolver<'_> {
             return Err(ParserError::new(super_val.extract().0, ParserErrorType::CantUseSuperInClassWithoutSuperClasses).into())
         }
         self.resolve_local(super_val, &super_val.extract().0);
+        Ok(Object::Nil)
+    }
+
+    fn visit_list(&mut self, list: &List<Result<Object>>) -> Result<Object> {
+        let values = list.extract_values();
+        for value in values {
+            self.resolve_expr(value)?;
+        }
         Ok(Object::Nil)
     }
 }

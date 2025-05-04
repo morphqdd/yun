@@ -48,4 +48,6 @@ pub enum TokenType {
     Eof,
     Use,
     Export,
+    LeftBracket,
+    RightBracket,
 }

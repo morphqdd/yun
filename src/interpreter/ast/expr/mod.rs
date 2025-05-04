@@ -11,6 +11,7 @@ use crate::interpreter::ast::expr::superclass::Super;
 use crate::interpreter::ast::expr::unary::Unary;
 use crate::interpreter::ast::expr::variable::Variable;
 use downcast_rs::{impl_downcast, Downcast};
+use crate::interpreter::ast::expr::list::List;
 
 pub mod assignment;
 pub mod binary;
@@ -24,6 +25,7 @@ pub mod set;
 pub mod superclass;
 pub mod unary;
 pub mod variable;
+pub mod list;
 
 pub trait ExprVisitor<T> {
     fn visit_binary(&mut self, binary: &Binary<T>) -> T;
@@ -38,6 +40,7 @@ pub trait ExprVisitor<T> {
     fn visit_set(&mut self, set: &Set<T>) -> T;
     fn visit_self(&mut self, self_val: &SelfExpr) -> T;
     fn visit_super(&mut self, super_val: &Super) -> T;
+    fn visit_list(&mut self, list: &List<T>) -> T;
 }
 
 pub trait Expr<T>: Downcast + CloneExpr<T> {

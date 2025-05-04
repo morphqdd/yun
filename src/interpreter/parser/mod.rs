@@ -30,6 +30,7 @@ use crate::interpreter::parser::error::{ParserError, ParserErrorType};
 use crate::interpreter::scanner::token::token_type::TokenType;
 use crate::interpreter::scanner::token::Token;
 use std::marker::PhantomData;
+use crate::interpreter::ast::expr::list::List;
 
 pub mod error;
 pub mod resolver;
@@ -531,12 +532,28 @@ where
 
             return Ok(b!(Super::new(keyword, method)));
         }
+        
+        if self._match(vec![TokenType::LeftBracket]) {
+            return self.list()
+        }
 
         Err(self
             .error(self.peek(), ParserErrorType::ExpectedExpression)
             .into())
     }
 
+    fn list(&mut self) -> Result<Box<dyn Expr<T>>> {
+        let mut values = vec![];
+        if !self.check(TokenType::RightBracket) {
+            values.push(self.expression()?);
+            while self._match(vec![TokenType::Comma]) {
+                values.push(self.expression()?);
+            }
+        }
+        self.consume(TokenType::RightBracket, ParserErrorType::ExpectedRightBracket)?;
+        Ok(b!(List::new(values)))
+    }
+    
     fn _match(&mut self, types: Vec<TokenType>) -> bool {
         for ty in types {
             if self.check(ty) {

@@ -5,7 +5,6 @@ use crate::rc;
 use crate::utils::next_id;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
-use std::ops::Deref;
 use std::rc::Rc;
 
 #[derive(Debug, Clone, PartialEq)]

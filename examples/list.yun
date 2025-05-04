@@ -1,0 +1,13 @@
+use "lib/lists";
+use "timer";
+
+let timer = Timer();
+
+let list = List([]);
+for (let i = 0; i < 1000; i = i + 1) {
+    list.push(i);
+}
+
+//list._print();
+
+print timer.elapsed();

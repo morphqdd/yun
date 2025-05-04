@@ -55,6 +55,7 @@ use std::process::exit;
 use std::rc::Rc;
 use std::time::Instant;
 use std::{fs, io};
+use crate::interpreter::ast::expr::list::List;
 use crate::interpreter::ast::expr::superclass::Super;
 
 pub struct Interpreter {
@@ -67,6 +68,26 @@ pub struct Interpreter {
 impl Default for Interpreter {
     fn default() -> Self {
         let mut globals = Environment::default();
+
+        globals.define(
+            "get",
+            Some(Object::Callable(Callable::build(
+                next_id(),
+                None,
+                None,
+                rc!(|_, args| -> Result<Object> {
+                    let list = args[0].clone();
+                    let index = args[1].clone();
+                    if let (Object::List(list), Object::Number(number)) = (list, index) {
+                        return Ok(list.get(number as usize).unwrap_or(&Object::Nil).clone());
+                    }
+                    Ok(Object::Nil)
+                }),
+                rc!(|| 2),
+                rc!(|| "get".into()),
+                false,
+            ))),
+        );
 
         globals.define(
             "clock",
@@ -506,6 +527,14 @@ impl ExprVisitor<Result<Object>> for Interpreter {
         }
 
         Err(RuntimeError::new(method_name.clone(), RuntimeErrorType::UndefinedProperty(method_name.get_lexeme().into())).into())
+    }
+
+    fn visit_list(&mut self, list: &List<Result<Object>>) -> Result<Object> {
+        let mut values: Vec<Object> = vec![];
+        for val in list.extract_values() {
+            values.push(self.evaluate(val)?);
+        }
+        Ok(Object::List(values))
     }
 }
 

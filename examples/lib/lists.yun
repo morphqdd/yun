@@ -1,0 +1,17 @@
+export class List {
+    init(list) {
+        self.values = list;
+    }
+
+    get(index) {
+        return get(self.values, index);
+    }
+
+    push(obj) {
+        self.values = self.values + obj;
+    }
+
+    _print() {
+        print self.values;
+    }
+}

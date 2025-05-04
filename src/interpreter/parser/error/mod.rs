@@ -67,6 +67,7 @@ pub enum ParserErrorType {
     ExpectedDotAfterSuper,
     CantUseSuperOutsideOfClass,
     CantUseSuperInClassWithoutSuperClasses,
+    ExpectedRightBracket,
 }
 
 impl Display for ParserErrorType {
@@ -139,6 +140,7 @@ impl Display for ParserErrorType {
             ParserErrorType::ExpectedDotAfterSuper => write!(f, "Expected '.'!"),
             ParserErrorType::CantUseSuperOutsideOfClass => write!(f, "Can't use 'super' outside of a class!"),
             ParserErrorType::CantUseSuperInClassWithoutSuperClasses => write!(f, "Can't use 'super' in class without superclasses!"),
+            ParserErrorType::ExpectedRightBracket => write!(f, "Expected ']'!"),
         }
     }
 }

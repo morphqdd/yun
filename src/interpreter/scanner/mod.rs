@@ -84,6 +84,8 @@ impl Scanner {
         match c {
             '(' => self.add_token(TokenType::LeftParen, None),
             ')' => self.add_token(TokenType::RightParen, None),
+            '[' => self.add_token(TokenType::LeftBracket, None),
+            ']' => self.add_token(TokenType::RightBracket, None),
             '{' => self.add_token(TokenType::LeftBrace, None),
             '}' => self.add_token(TokenType::RightBrace, None),
             ',' => self.add_token(TokenType::Comma, None),

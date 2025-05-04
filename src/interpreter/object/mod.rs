@@ -9,7 +9,7 @@ use crate::interpreter::object::native_object::NativeObject;
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 use std::ops::{Add, Deref, Div, Mul, Neg, Not, Sub};
 use std::rc::Rc;
 use crate::b;
@@ -31,6 +31,7 @@ pub enum Object {
     Rc(Rc<Object>),
     Nil,
     Void,
+    List(Vec<Object>),
 }
 
 impl Object {
@@ -46,6 +47,7 @@ impl Object {
             Object::Instance(instance) => instance.to_string(),
             Object::NativeObject(_) => "<native object>".into(),
             Object::Rc(obj) => obj.get_type(),
+            Object::List(_) => "list".into(),
         }
     }
 
@@ -144,6 +146,12 @@ impl Add for Object {
         match (&self, &rhs) {
             (Object::Number(a), Object::Number(b)) => Ok(Object::Number(a + b)),
             (Object::String(a), Object::String(b)) => Ok(Object::String(a.to_owned() + b)),
+            (Object::List(a), _) => {
+                let mut new = vec![];
+                new.append(&mut a.clone());
+                new.push(rhs.clone());
+                Ok(Object::List(new))
+            },
             (Object::Rc(rc), _) => rc.clone_into_rc() + rhs,
             (_, Object::Rc(rc)) => self + rc.clone_into_rc(),
             _ => Err(RuntimeErrorType::CannotAddTypes(self.get_type(), rhs.get_type()).into()),
@@ -232,7 +240,13 @@ impl Display for Object {
             Object::Class(class) => write!(f, "{}", class),
             Object::Instance(instance) => write!(f, "{}", instance),
             Object::NativeObject(_) => write!(f, "<native object>"),
-            Object::Rc(rc) => write!(f, "{}", rc), 
+            Object::Rc(rc) => write!(f, "{}", rc),
+            Object::List(list) => write!(f, "[{}]", list.iter().map(
+                |obj| match obj {
+                    Object::String(str) => format!("{:?}", str),
+                    _ => obj.to_string(),
+                }
+            ).collect::<Vec<_>>().join(", ")),
         }
     }
 }
